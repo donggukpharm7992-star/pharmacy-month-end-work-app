@@ -70,6 +70,16 @@ describe("schedule rules", () => {
     expect(schedule.days.find((day) => day.dateKey === "2026-09-26")?.morningStaff).toHaveLength(2);
   });
 
+  it("keeps Seo Yunseok fixed only on Sundays, not on holidays", () => {
+    const schedule = buildMonthSchedule(2026, 9);
+    const sunday = schedule.days.find((day) => day.dateKey === "2026-09-06");
+    const holiday = schedule.days.find((day) => day.dateKey === "2026-09-24");
+
+    expect(sunday?.dayPharmacists).toContain("서윤석");
+    expect(holiday?.dayPharmacists).toHaveLength(2);
+    expect(holiday?.dayPharmacists).not.toContain("서윤석");
+  });
+
   it("groups the month schedule into Monday-to-Sunday week blocks", () => {
     const schedule = buildMonthSchedule(2026, 9);
     const weeks = buildScheduleWeeks(schedule);

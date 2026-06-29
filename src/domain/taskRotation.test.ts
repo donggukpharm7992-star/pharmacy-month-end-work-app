@@ -60,10 +60,17 @@ describe("staff task assignment rotation", () => {
     expect(rotated[1].helperName).toBe("지현");
   });
 
-  it("moves lunch to the later slot when the primary name also appears in a white helper cell", () => {
-    const rotated = rotateStaffAssignments(staffAssignmentTemplate, 3);
-    const affected = rotated.find((row) => row.primaryName === row.helperName);
+  it("keeps lunch at 11:45-12:30 when Donghee, Jisuk, or Jihyeon are in the time column", () => {
+    const protectedNames = ["김동희", "박지숙", "지현"];
 
-    expect(affected?.lunchSlot).toBe("12:30-13:30");
+    for (let monthOffset = 0; monthOffset < staffAssignmentTemplate.length; monthOffset += 1) {
+      const rotated = rotateStaffAssignments(staffAssignmentTemplate, monthOffset);
+      const protectedRows = rotated.filter((row) => protectedNames.includes(row.primaryName));
+
+      expect(protectedRows.length).toBeGreaterThan(0);
+      protectedRows.forEach((row) => {
+        expect(row.lunchSlot).toBe("11:45-12:30");
+      });
+    }
   });
 });

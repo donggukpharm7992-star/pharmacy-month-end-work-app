@@ -379,6 +379,19 @@ th {
   vertical-align: top;
 }
 
+.weekend-duty-cell {
+  color: #173143;
+  font-weight: 800;
+}
+
+.weekend-duty-cell.red-day {
+  background: #ffd8cf;
+}
+
+.weekend-duty-cell.blue-day {
+  background: #cfe2eb;
+}
+
 .schedule-chip {
   display: block;
   width: fit-content;

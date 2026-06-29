@@ -151,6 +151,8 @@ function rotateRight<T>(items: T[], steps: number): T[] {
   return [...items.slice(items.length - normalized), ...items.slice(0, items.length - normalized)];
 }
 
+const earlyLunchPrimaryNames = ["김동희", "박지숙", "지현"];
+
 export function rotateStaffAssignments(
   rows: StaffAssignmentRow[],
   monthOffset: number
@@ -181,12 +183,19 @@ export function rotateStaffAssignments(
       : undefined;
     const primaryName = primaryNames[index];
     const rowHelperNames = [helperName, secondHelperName].filter(Boolean);
+    const lunchSlot = earlyLunchPrimaryNames.includes(primaryName)
+      ? "11:45-12:30"
+      : rowHelperNames.includes(primaryName)
+        ? "12:30-13:30"
+        : row.lunchSlot;
     return {
       ...row,
       primaryName,
       helperName,
       secondHelperName,
-      lunchSlot: rowHelperNames.includes(primaryName) ? "12:30-13:30" : row.lunchSlot
+      lunchEarly: lunchSlot === "11:45-12:30" ? "식사" : "",
+      lunchLate: lunchSlot === "12:30-13:30" ? "식사" : "",
+      lunchSlot
     };
   });
 }

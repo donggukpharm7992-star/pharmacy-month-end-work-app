@@ -317,8 +317,8 @@ function ScheduleTab({
     { label: "나이트 업무 구분", get: () => "" },
     { label: "07:15-11:15", get: (day: (typeof schedule.days)[number]) => day.morningStaff.join("/") },
     { label: "08:00-17:00", get: (day: (typeof schedule.days)[number]) => day.dayPharmacists.join("/") },
-    { label: "08:00-12:00 위", get: (day: (typeof schedule.days)[number]) => day.upperMorningPharmacists.join("/") },
-    { label: "08:00-12:00 아래", get: (day: (typeof schedule.days)[number]) => day.lowerMorningStaff.join("/") }
+    { label: "08:00-12:00 약사", get: (day: (typeof schedule.days)[number]) => day.upperMorningPharmacists.join("/") },
+    { label: "08:00-12:00 직원", get: (day: (typeof schedule.days)[number]) => day.lowerMorningStaff.join("/") }
   ];
 
   return (
@@ -360,11 +360,22 @@ function ScheduleTab({
                 {rows.map((row) => (
                   <tr key={`${week.index}-${row.label}`}>
                     <td className="time-col">{row.label}</td>
-                    {week.days.map((day, index) => (
-                      <td key={`${week.index}-${row.label}-${index}`} className={day == null ? "blank-day" : ""}>
-                        {day ? row.get(day) : ""}
-                      </td>
-                    ))}
+                    {week.days.map((day, index) => {
+                      const value = day ? row.get(day) : "";
+                      const weekendClass = value && day?.weekday === 6
+                        ? "blue-day weekend-duty-cell"
+                        : value && day?.weekday === 0
+                          ? "red-day weekend-duty-cell"
+                          : "";
+                      return (
+                        <td
+                          key={`${week.index}-${row.label}-${index}`}
+                          className={day == null ? "blank-day" : weekendClass}
+                        >
+                          {value}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
                 <tr className="schedule-event-row">

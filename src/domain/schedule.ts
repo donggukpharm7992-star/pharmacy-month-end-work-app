@@ -171,6 +171,7 @@ function dayPharmacistNames(
   if (weekday !== 6 && weekday !== 0 && !holiday) return [];
   const monthShift = month % 2;
   const index = Math.abs(diffDays(dateKey, "2026-01-01")) + monthShift;
+  if (holiday) return takeCycled(names, index, 2);
   if (weekday === 6) return [names[index % names.length], "이승현"];
   const fixedFirst = month % 2 === 1;
   const rotating = names[index % names.length];
