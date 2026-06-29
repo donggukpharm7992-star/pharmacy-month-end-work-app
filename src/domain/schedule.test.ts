@@ -3,6 +3,7 @@ import {
   assignNightPharmacists,
   assignNightStaff,
   buildMonthSchedule,
+  buildScheduleWeeks,
   rotateNightPharmacists
 } from "./schedule";
 
@@ -21,14 +22,16 @@ describe("schedule rules", () => {
     ]);
   });
 
-  it("assigns two night pharmacists per date from the rotated list", () => {
+  it("pairs night pharmacists by positions 1+4, 2+5, and 3+6", () => {
     const names = ["윤주원", "정순미", "송유희", "이상훈", "장소희", "김동신"];
 
-    expect(assignNightPharmacists("2026-09-21", names)).toEqual(["윤주원", "정순미"]);
-    expect(assignNightPharmacists("2026-09-22", names)).toEqual(["송유희", "장소희"]);
+    expect(assignNightPharmacists("2026-09-01", names)).toEqual(["윤주원", "이상훈"]);
+    expect(assignNightPharmacists("2026-09-02", names)).toEqual(["정순미", "장소희"]);
+    expect(assignNightPharmacists("2026-09-03", names)).toEqual(["송유희", "김동신"]);
+    expect(assignNightPharmacists("2026-09-04", names)).toEqual(["윤주원", "이상훈"]);
   });
 
-  it("assigns night staff by three positions with three-day alternation", () => {
+  it("assigns night staff by staggered three-day position alternation from the August schedule", () => {
     const positions = [
       ["이율경", "고우리"],
       ["전다은", "신혜정"],
@@ -36,6 +39,8 @@ describe("schedule rules", () => {
     ];
 
     expect(assignNightStaff("2026-09-01", positions)).toEqual(["고우리", "신혜정", "현경아"]);
+    expect(assignNightStaff("2026-09-02", positions)).toEqual(["고우리", "전다은", "현경아"]);
+    expect(assignNightStaff("2026-09-03", positions)).toEqual(["고우리", "전다은", "이현주"]);
     expect(assignNightStaff("2026-09-04", positions)).toEqual(["이율경", "전다은", "이현주"]);
   });
 
@@ -57,7 +62,19 @@ describe("schedule rules", () => {
       title: "유효기간 조사일",
       type: "expiryReview"
     });
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-15")?.events).toContainEqual({
+      date: "2026-09-15",
+      title: "월례회의",
+      type: "monthlyMeeting"
+    });
     expect(schedule.days.find((day) => day.dateKey === "2026-09-26")?.morningStaff).toHaveLength(2);
   });
-});
 
+  it("groups the month schedule into Monday-to-Sunday week blocks", () => {
+    const schedule = buildMonthSchedule(2026, 9);
+    const weeks = buildScheduleWeeks(schedule);
+
+    expect(weeks[0].days.map((day) => day?.day ?? null)).toEqual([null, 1, 2, 3, 4, 5, 6]);
+    expect(weeks[1].days.map((day) => day?.day ?? null)).toEqual([7, 8, 9, 10, 11, 12, 13]);
+  });
+});

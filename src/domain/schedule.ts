@@ -2,6 +2,7 @@ import {
   CalendarEvent,
   dateKeyToDate,
   daysInMonth,
+  getHolidayName,
   isHoliday,
   toDateKey
 } from "./calendar";
@@ -29,6 +30,8 @@ export type ScheduleDay = {
   day: number;
   weekday: number;
   holiday: boolean;
+  holidayName?: string;
+  events: CalendarEvent[];
   nightPharmacists: string[];
   nightStaff: string[];
   morningStaff: string[];
@@ -43,6 +46,11 @@ export type MonthSchedule = {
   month: number;
   days: ScheduleDay[];
   events: CalendarEvent[];
+};
+
+export type ScheduleWeek = {
+  index: number;
+  days: Array<ScheduleDay | null>;
 };
 
 export const defaultNightPharmacists = ["윤주원", "정순미", "송유희", "이상훈", "장소희", "김동신"];
@@ -89,7 +97,8 @@ const eventTitles: Record<EventDateKey, string> = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NIGHT_PHARMACIST_TURN_ANCHOR = "2026-09-21";
-const NIGHT_STAFF_ANCHOR = "2026-09-01";
+const NIGHT_PHARMACIST_PAIR_ANCHOR = "2026-09-01";
+const NIGHT_STAFF_POSITION_ANCHORS = ["2026-09-01", "2026-08-30", "2026-08-31"];
 
 function diffDays(dateKey: string, anchorKey: string): number {
   const date = dateKeyToDate(dateKey).getTime();
@@ -103,6 +112,10 @@ function moveFourthToEnd(names: string[]): string[] {
   const [fourth] = result.splice(3, 1);
   result.push(fourth);
   return result;
+}
+
+function modulo(value: number, divisor: number): number {
+  return ((value % divisor) + divisor) % divisor;
 }
 
 function takeCycled<T>(items: T[], start: number, count: number): T[] {
@@ -121,17 +134,21 @@ export function rotateNightPharmacists(names: string[], dateKey: string): string
 
 export function assignNightPharmacists(dateKey: string, names = defaultNightPharmacists): string[] {
   const rotated = rotateNightPharmacists(names, dateKey);
-  const dayOffset = Math.max(0, diffDays(dateKey, NIGHT_PHARMACIST_TURN_ANCHOR));
-  return takeCycled(rotated, dayOffset * 2, 2);
+  const pairIndex = modulo(diffDays(dateKey, NIGHT_PHARMACIST_PAIR_ANCHOR), 3);
+  return [rotated[pairIndex], rotated[pairIndex + 3]].filter(Boolean);
 }
 
 export function assignNightStaff(
   dateKey: string,
   positions = defaultNightStaffPositions
 ): string[] {
-  const dayOffset = Math.max(0, diffDays(dateKey, NIGHT_STAFF_ANCHOR));
-  const block = Math.floor(dayOffset / 3);
-  return positions.map((pair) => pair[block % 2 === 0 ? 1 : 0]).filter(Boolean);
+  return positions
+    .map((pair, index) => {
+      const anchor = NIGHT_STAFF_POSITION_ANCHORS[index] ?? NIGHT_STAFF_POSITION_ANCHORS[0];
+      const block = Math.floor(diffDays(dateKey, anchor) / 3);
+      return pair[modulo(block, 2) === 0 ? 1 : 0];
+    })
+    .filter(Boolean);
 }
 
 function buildEvents(eventDates: ScheduleEventDates = {}): CalendarEvent[] {
@@ -177,6 +194,7 @@ export function buildMonthSchedule(
   const nightStaffPositions = options.nightStaffPositions ?? defaultNightStaffPositions;
   const weekendStaff = options.weekendStaff ?? defaultWeekendStaff;
   const weekendPharmacists = options.weekendPharmacists ?? defaultWeekendPharmacists;
+  const events = buildEvents(options.eventDates);
   let weekendStaffCursor = 0;
 
   const days: ScheduleDay[] = Array.from({ length: daysInMonth(year, month) }, (_, index) => {
@@ -184,6 +202,8 @@ export function buildMonthSchedule(
     const dateKey = toDateKey(year, month, day);
     const weekday = dateKeyToDate(dateKey).getDay();
     const holiday = isHoliday(dateKey);
+    const holidayName = getHolidayName(dateKey);
+    const dayEvents = events.filter((event) => event.date === dateKey);
     const morningStaff = weekday === 6 ? takeCycled(weekendStaff, weekendStaffCursor, 2) : [];
     if (morningStaff.length > 0) weekendStaffCursor += morningStaff.length;
     const lowerMorningStaff = weekday === 0 || holiday ? takeCycled(weekendStaff, weekendStaffCursor++, 1) : [];
@@ -193,6 +213,8 @@ export function buildMonthSchedule(
       day,
       weekday,
       holiday,
+      holidayName,
+      events: dayEvents,
       nightPharmacists: assignNightPharmacists(dateKey, nightPharmacists),
       nightStaff: assignNightStaff(dateKey, nightStaffPositions),
       morningStaff,
@@ -207,7 +229,24 @@ export function buildMonthSchedule(
     year,
     month,
     days,
-    events: buildEvents(options.eventDates)
+    events
   };
 }
 
+export function buildScheduleWeeks(schedule: MonthSchedule): ScheduleWeek[] {
+  const firstWeekday = dateKeyToDate(schedule.days[0].dateKey).getDay();
+  const mondayBasedOffset = (firstWeekday + 6) % 7;
+  const cells: Array<ScheduleDay | null> = [
+    ...Array.from({ length: mondayBasedOffset }, () => null),
+    ...schedule.days
+  ];
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  return Array.from({ length: cells.length / 7 }, (_, index) => ({
+    index,
+    days: cells.slice(index * 7, index * 7 + 7)
+  }));
+}

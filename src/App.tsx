@@ -15,6 +15,7 @@ import palette from "./assets/palette.png";
 import { buildMonthDays, CalendarEvent, toDateKey } from "./domain/calendar";
 import {
   buildMonthSchedule,
+  buildScheduleWeeks,
   defaultNightPharmacists,
   defaultNightStaffPositions,
   defaultWeekendPharmacists,
@@ -30,6 +31,8 @@ import {
 } from "./domain/documents";
 import {
   rotateStaffAssignments,
+  staffAssignmentColumns,
+  StaffAssignmentColumnKey,
   staffAssignmentTemplate
 } from "./domain/taskRotation";
 import {
@@ -86,6 +89,13 @@ function monthOffsetFrom2026(year: number, month: number) {
 
 function pharmacistEditKey(rowId: string, columnKey: PharmacistAssignmentColumnKey) {
   return `${rowId}:${columnKey}`;
+}
+
+function staffCellValue(
+  row: ReturnType<typeof rotateStaffAssignments>[number],
+  columnKey: StaffAssignmentColumnKey
+) {
+  return row[columnKey] ?? "";
 }
 
 export default function App() {
@@ -299,9 +309,12 @@ function ScheduleTab({
   setEventDates: (value: ScheduleEventDates) => void;
 }) {
   const [showLists, setShowLists] = useState(true);
+  const weeks = buildScheduleWeeks(schedule);
+  const weekdays = ["월", "화", "수", "목", "금", "토", "일"];
   const rows = [
     { label: "17:00-익일08:00", get: (day: (typeof schedule.days)[number]) => day.nightPharmacists.join("/") },
     { label: "20:00-익일07:00", get: (day: (typeof schedule.days)[number]) => day.nightStaff.join("/") },
+    { label: "나이트 업무 구분", get: () => "" },
     { label: "07:15-11:15", get: (day: (typeof schedule.days)[number]) => day.morningStaff.join("/") },
     { label: "08:00-17:00", get: (day: (typeof schedule.days)[number]) => day.dayPharmacists.join("/") },
     { label: "08:00-12:00 위", get: (day: (typeof schedule.days)[number]) => day.upperMorningPharmacists.join("/") },
@@ -312,37 +325,63 @@ function ScheduleTab({
     <section className="print-page panel">
       <div className="section-title row-title">
         <div>
-          <h2>약사 근무표</h2>
-          <p>나이트 약사, 나이트 직원, 주말/공휴일 근무를 자동 산출합니다.</p>
+          <h2>약제팀 근무표</h2>
+          <p>나이트 약사, 나이트 직원, 주말/공휴일 근무와 지정 일정을 주 단위로 표시합니다.</p>
         </div>
         <button type="button" className="quiet no-print" onClick={() => setShowLists((open) => !open)}>
           <Save size={16} /> 이름 리스트 편집
         </button>
       </div>
 
-      <div className="wide-table">
-        <table>
-          <thead>
-            <tr>
-              <th>근무시간</th>
-              {schedule.days.map((day) => (
-                <th key={day.dateKey} className={day.weekday === 0 || day.holiday ? "red-day" : day.weekday === 6 ? "blue-day" : ""}>
-                  {day.day}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.label}>
-                <td className="time-col">{row.label}</td>
-                {schedule.days.map((day) => (
-                  <td key={`${row.label}-${day.dateKey}`}>{row.get(day)}</td>
+      <div className="schedule-weeks">
+        {weeks.map((week) => (
+          <div className="wide-table schedule-week" key={week.index}>
+            <table className="schedule-week-table">
+              <thead>
+                <tr>
+                  <th>근무시간</th>
+                  {weekdays.map((weekday) => (
+                    <th key={weekday}>{weekday}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="date-row">
+                  <td className="time-col">{schedule.month}월 {week.index + 1}주</td>
+                  {week.days.map((day, index) => (
+                    <td
+                      key={`date-${week.index}-${index}`}
+                      className={day == null ? "blank-day" : day.weekday === 0 || day.holiday ? "red-day" : day.weekday === 6 ? "blue-day" : ""}
+                    >
+                      {day ? `${schedule.month}월${day.day}일` : ""}
+                    </td>
+                  ))}
+                </tr>
+                {rows.map((row) => (
+                  <tr key={`${week.index}-${row.label}`}>
+                    <td className="time-col">{row.label}</td>
+                    {week.days.map((day, index) => (
+                      <td key={`${week.index}-${row.label}-${index}`} className={day == null ? "blank-day" : ""}>
+                        {day ? row.get(day) : ""}
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                <tr className="schedule-event-row">
+                  <td className="time-col">일정</td>
+                  {week.days.map((day, index) => (
+                    <td key={`event-${week.index}-${index}`} className={day == null ? "blank-day" : ""}>
+                      {day?.holidayName && <span className="schedule-chip holiday-chip">{day.holidayName}</span>}
+                      {day?.events.map((event) => (
+                        <span className="schedule-chip" key={`${event.date}-${event.title}`}>{event.title}</span>
+                      ))}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ))}
       </div>
 
       <div className="event-editor no-print">
@@ -439,26 +478,27 @@ function AssignmentTab({
       {selectedView === "staff" && (
         <div className="assignment-single-panel">
           <h3>직원 업무 분장</h3>
-          <table className="assignment-table">
+          <table className="assignment-table staff-assignment-table">
             <thead>
               <tr>
-                <th>업무</th>
-                <th>B행 담당</th>
-                <th>C/D 흰색 셀</th>
-                <th>점심</th>
-                <th>오전 업무</th>
-                <th>오후 업무</th>
+                {staffAssignmentColumns.map((column) => (
+                  <th key={column.key}>{column.label}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {staffAssignments.map((row) => (
                 <tr key={row.task}>
-                  <td>{row.task}</td>
-                  <td className="editable-cell" contentEditable suppressContentEditableWarning>{row.primaryName}</td>
-                  <td className="editable-cell" contentEditable suppressContentEditableWarning>{row.helperName ?? ""}</td>
-                  <td>{row.lunchSlot}</td>
-                  <td>{row.morningTask}</td>
-                  <td>{row.afternoonTask}</td>
+                  {staffAssignmentColumns.map((column) => (
+                    <td
+                      key={`${row.task}-${column.key}`}
+                      className={column.editable ? "editable-cell" : "staff-task-text"}
+                      contentEditable={column.editable}
+                      suppressContentEditableWarning={column.editable}
+                    >
+                      {staffCellValue(row, column.key)}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

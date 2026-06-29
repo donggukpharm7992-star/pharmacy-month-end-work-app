@@ -341,6 +341,62 @@ th {
   text-align: left;
 }
 
+.schedule-weeks {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.schedule-week {
+  padding: 0;
+}
+
+.schedule-week-table {
+  min-width: 920px;
+}
+
+.schedule-week-table th,
+.schedule-week-table td {
+  min-width: 104px;
+  text-align: center;
+}
+
+.schedule-week-table .time-col {
+  min-width: 132px;
+}
+
+.date-row td {
+  font-weight: 800;
+}
+
+.blank-day {
+  background: #f5f6f6;
+  color: #a0a8ad;
+}
+
+.schedule-event-row td {
+  min-height: 42px;
+  vertical-align: top;
+}
+
+.schedule-chip {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 2px auto;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: #dce8ef;
+  color: #234254;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.holiday-chip {
+  background: #f7d6c2;
+  color: #7e3a12;
+}
+
 .red-day {
   background: #ffe3da;
 }
@@ -421,6 +477,32 @@ textarea {
 .assignment-table th,
 .assignment-table td {
   min-width: 96px;
+}
+
+.staff-assignment-table {
+  min-width: 1580px;
+}
+
+.staff-assignment-table th:nth-child(5),
+.staff-assignment-table td:nth-child(5),
+.staff-assignment-table th:nth-child(8),
+.staff-assignment-table td:nth-child(8) {
+  min-width: 270px;
+  text-align: left;
+}
+
+.staff-assignment-table th:nth-child(10),
+.staff-assignment-table td:nth-child(10),
+.staff-assignment-table th:nth-child(11),
+.staff-assignment-table td:nth-child(11),
+.staff-assignment-table th:nth-child(12),
+.staff-assignment-table td:nth-child(12) {
+  min-width: 160px;
+  text-align: left;
+}
+
+.staff-task-text {
+  white-space: pre-wrap;
 }
 
 .pharmacist-assignment-table {
