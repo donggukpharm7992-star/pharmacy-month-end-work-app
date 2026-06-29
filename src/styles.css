@@ -1,0 +1,545 @@
+:root {
+  --orange: #f38f49;
+  --orange-dark: #d76501;
+  --bluegray: #a8b6c3;
+  --taupe: #998f8a;
+  --brown: #957869;
+  --paper: #f7f8f8;
+  --line: #d8dee2;
+  --ink: #263238;
+  --muted: #66727a;
+  --holiday: #fff0e8;
+  --sat: #eef4f8;
+  --sun: #ffe9e2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #e4e4e4;
+  color: var(--ink);
+  font-family: "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+}
+
+.sidebar {
+  min-height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid var(--line);
+  padding: 18px 14px;
+  position: sticky;
+  top: 0;
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.brand strong,
+.brand span {
+  display: block;
+}
+
+.brand strong {
+  font-size: 16px;
+}
+
+.brand span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.nav-tabs {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.nav-tabs button,
+.top-actions button,
+.quiet,
+.subtabs button,
+.segmented button,
+.checklist-title button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.nav-tabs button {
+  justify-content: flex-start;
+  padding: 10px 12px;
+}
+
+.nav-tabs svg,
+.top-actions svg,
+.quiet svg,
+.checklist-title svg {
+  width: 17px;
+  height: 17px;
+}
+
+.nav-tabs .active,
+.subtabs .selected,
+.segmented .selected {
+  background: var(--bluegray);
+  border-color: #94a7b5;
+  color: #173143;
+}
+
+.palette-card {
+  margin-top: 22px;
+  padding: 10px;
+  background: #f9fbfc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.palette-card span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.palette-card img {
+  width: 100%;
+  display: block;
+  border-radius: 6px;
+}
+
+.workspace {
+  padding: 22px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.month-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.month-control > button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.month-control span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.month-control strong {
+  display: block;
+  font-size: 20px;
+}
+
+.top-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.top-actions button:last-child,
+.checklist-title button {
+  background: var(--orange);
+  border-color: var(--orange-dark);
+  color: #ffffff;
+}
+
+.calendar-panel,
+.panel {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.section-title {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #f9fbfc;
+}
+
+.section-title h1,
+.section-title h2,
+.section-title h3 {
+  margin: 0;
+}
+
+.section-title p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.row-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(92px, 1fr));
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  margin: 14px;
+}
+
+.weekday,
+.calendar-cell {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.weekday {
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  background: #eef2f4;
+  font-weight: 800;
+}
+
+.calendar-cell {
+  min-height: 84px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.calendar-cell.blank {
+  background: #fafafa;
+}
+
+.calendar-cell.sat {
+  background: var(--sat);
+}
+
+.calendar-cell.sun {
+  background: var(--sun);
+}
+
+.calendar-cell.holiday {
+  background: var(--holiday);
+}
+
+.calendar-cell strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.holiday-label,
+.event-pill {
+  display: block;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.holiday-label {
+  background: #f7d6c2;
+  color: #7e3a12;
+}
+
+.event-pill {
+  background: #dce8ef;
+  color: #234254;
+}
+
+.wide-table {
+  overflow-x: auto;
+  padding: 14px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 1px solid var(--line);
+  padding: 7px;
+  font-size: 12px;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+th {
+  background: #eef2f4;
+  font-weight: 800;
+}
+
+.wide-table th,
+.wide-table td {
+  min-width: 72px;
+  text-align: center;
+}
+
+.wide-table .time-col {
+  min-width: 128px;
+  background: #fafafa;
+  font-weight: 800;
+  text-align: left;
+}
+
+.red-day {
+  background: #ffe3da;
+}
+
+.blue-day {
+  background: #deebf2;
+}
+
+.event-editor,
+.list-editor,
+.editable-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.event-editor label,
+.editable-fields label,
+.text-list-editor {
+  display: grid;
+  gap: 5px;
+}
+
+.event-editor span,
+.editable-fields span,
+.text-list-editor span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.split-panels {
+  display: grid;
+  grid-template-columns: minmax(560px, 1.2fr) minmax(320px, 0.8fr);
+  gap: 14px;
+  padding: 14px;
+  overflow-x: auto;
+}
+
+.split-panels h3,
+.document-sheet h3,
+.checklist-page h3,
+.checklist-page h4 {
+  margin: 0 0 10px;
+}
+
+.assignment-table th,
+.assignment-table td {
+  min-width: 96px;
+}
+
+.editable-cell {
+  background: #fffdf8;
+  outline: 1px dashed #e5b07a;
+  outline-offset: -4px;
+}
+
+.subtabs,
+.segmented {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.subtabs {
+  padding: 14px 14px 0;
+}
+
+.document-sheet {
+  padding: 14px;
+}
+
+.document-sheet p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.empty-write-cell {
+  height: 30px;
+  background: #fffdf8;
+}
+
+.checklist-pages {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.checklist-page {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.checklist-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.checklist-page table {
+  margin-bottom: 14px;
+}
+
+@media (max-width: 1120px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    min-height: auto;
+  }
+
+  .nav-tabs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .split-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  .print-portrait {
+    page: portrait-page;
+  }
+
+  .print-landscape {
+    page: landscape-page;
+  }
+
+  @page portrait-page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  @page landscape-page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  .app {
+    display: block;
+  }
+
+  .no-print,
+  .sidebar,
+  .topbar {
+    display: none !important;
+  }
+
+  .workspace {
+    padding: 0;
+  }
+
+  .calendar-panel,
+  .panel,
+  .checklist-page {
+    border: none;
+    border-radius: 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-page {
+    break-after: page;
+  }
+
+  th,
+  td {
+    font-size: 10px;
+    padding: 4px;
+  }
+}
