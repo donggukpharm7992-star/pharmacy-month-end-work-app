@@ -24,6 +24,7 @@
 | `src/domain/schedule.ts` | 나이트 약사, 나이트 직원, 주말/공휴일 배정 |
 | `src/domain/taskRotation.ts` | 직원 업무 분장 월별 이름 순환 |
 | `src/domain/documents.ts` | 월말 서류와 체크리스트 출력 묶음 |
+| `src/domain/assignmentViews.ts` | 업무 분장 하위 탭과 출력 단위 |
 | `src/storage.ts` | localStorage 기반 편집값 저장 |
 | `src/App.tsx` | 탭, 월 선택, 편집 UI, 출력 버튼 |
 
@@ -42,6 +43,7 @@
 
 - 시작 달력: 선택 월 단위 낱장 출력.
 - 근무표: 월별 가로 출력.
+- 업무 분장: 직원 업무 분장과 약사 업무 분장을 하위 탭으로 분리해 각각 한 장씩 출력.
 - 월말 결재 서류: 각 하위 문서별 출력.
 - 직원 체크리스트: 외용제 단독, 추/긴+ATC, PTP+주사.
 - 노트북 체크리스트: 1번부터 4번까지 세로 출력.
@@ -53,4 +55,3 @@
 ## GitHub 흐름
 
 현재 저장소는 로컬 git을 기준으로 준비한다. 원격 URL이 생기면 `git remote add origin <URL>` 후 `scripts/git-auto-push.ps1`을 사용한다.
-

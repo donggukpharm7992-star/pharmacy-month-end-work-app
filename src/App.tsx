@@ -32,6 +32,10 @@ import {
   rotateStaffAssignments,
   staffAssignmentTemplate
 } from "./domain/taskRotation";
+import {
+  assignmentPrintViews,
+  AssignmentViewId
+} from "./domain/assignmentViews";
 import { useLocalStorageState } from "./storage";
 
 type MainTab = "schedule" | "assignment" | "documents" | "checklists";
@@ -392,15 +396,41 @@ function AssignmentTab({
   pharmacistTasks: Record<string, string>;
   setPharmacistTasks: (value: Record<string, string>) => void;
 }) {
+  const [selectedView, setSelectedView] = useState<AssignmentViewId>("staff");
+  const selectedPrintView =
+    assignmentPrintViews.find((view) => view.id === selectedView) ?? assignmentPrintViews[0];
+
   return (
-    <section className="panel print-page">
-      <div className="section-title">
-        <h2>업무 분장</h2>
-        <p>직원 업무 분장은 월별 순환 배정을 기본으로 하고, 노란 셀은 수기 편집 대상입니다.</p>
+    <section className={`panel print-page assignment-print-page ${selectedPrintView.id}`}>
+      <div className="section-title row-title">
+        <div>
+          <h2>업무 분장</h2>
+          <p>직원 업무 분장과 약사 업무 분장을 하위 탭으로 분리해 각각 한 장씩 출력합니다.</p>
+        </div>
+        <button
+          type="button"
+          className="quiet no-print"
+          onClick={() => window.print()}
+        >
+          <Printer size={16} /> {selectedPrintView.title} 출력
+        </button>
       </div>
 
-      <div className="split-panels">
-        <div>
+      <div className="subtabs assignment-subtabs no-print">
+        {assignmentPrintViews.map((view) => (
+          <button
+            key={view.id}
+            type="button"
+            className={view.id === selectedView ? "selected" : ""}
+            onClick={() => setSelectedView(view.id)}
+          >
+            {view.title}
+          </button>
+        ))}
+      </div>
+
+      {selectedView === "staff" && (
+        <div className="assignment-single-panel">
           <h3>직원 업무 분장</h3>
           <table className="assignment-table">
             <thead>
@@ -427,9 +457,11 @@ function AssignmentTab({
             </tbody>
           </table>
         </div>
+      )}
 
-        <div>
-          <h3>약제팀 업무 분장 - {year}년 {month}월</h3>
+      {selectedView === "pharmacist" && (
+        <div className="assignment-single-panel">
+          <h3>약사 업무 분장 - {year}년 {month}월</h3>
           <table className="assignment-table">
             <thead>
               <tr>
@@ -455,7 +487,7 @@ function AssignmentTab({
             </tbody>
           </table>
         </div>
-      </div>
+      )}
     </section>
   );
 }

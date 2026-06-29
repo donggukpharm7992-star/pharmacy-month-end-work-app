@@ -396,10 +396,20 @@ textarea {
 }
 
 .split-panels h3,
+.assignment-single-panel h3,
 .document-sheet h3,
 .checklist-page h3,
 .checklist-page h4 {
   margin: 0 0 10px;
+}
+
+.assignment-subtabs {
+  padding-bottom: 14px;
+}
+
+.assignment-single-panel {
+  padding: 14px;
+  overflow-x: auto;
 }
 
 .assignment-table th,
@@ -535,6 +545,10 @@ textarea {
 
   .print-page {
     break-after: page;
+  }
+
+  .assignment-print-page .assignment-single-panel {
+    padding: 0;
   }
 
   th,
