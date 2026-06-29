@@ -36,6 +36,11 @@ import {
   assignmentPrintViews,
   AssignmentViewId
 } from "./domain/assignmentViews";
+import {
+  buildPharmacistAssignment,
+  PharmacistAssignment,
+  PharmacistAssignmentColumnKey
+} from "./domain/pharmacistAssignment";
 import { useLocalStorageState } from "./storage";
 
 type MainTab = "schedule" | "assignment" | "documents" | "checklists";
@@ -57,15 +62,6 @@ const eventLabels: Record<EventDateKey, string> = {
   staffTaskChange: "직원 업무 변경일"
 };
 
-const editablePharmacistRows = [
-  "이지은",
-  "박현영 오전 업무",
-  "박혜정",
-  "김경원",
-  "김수빈",
-  "박주영"
-];
-
 function listToText(list: string[]) {
   return list.join("\n");
 }
@@ -86,6 +82,10 @@ function positionTextToList(text: string) {
 
 function monthOffsetFrom2026(year: number, month: number) {
   return (year - 2026) * 12 + (month - 1);
+}
+
+function pharmacistEditKey(rowId: string, columnKey: PharmacistAssignmentColumnKey) {
+  return `${rowId}:${columnKey}`;
 }
 
 export default function App() {
@@ -114,9 +114,9 @@ export default function App() {
     }
   );
 
-  const [pharmacistTasks, setPharmacistTasks] = useLocalStorageState<Record<string, string>>(
-    "pharmacy-app-pharmacist-tasks",
-    Object.fromEntries(editablePharmacistRows.map((name) => [name, ""]))
+  const [pharmacistCellEdits, setPharmacistCellEdits] = useLocalStorageState<Record<string, string>>(
+    "pharmacy-app-pharmacist-assignment-edits",
+    {}
   );
 
   const schedule = useMemo(
@@ -140,6 +140,10 @@ export default function App() {
   const staffAssignments = rotateStaffAssignments(
     staffAssignmentTemplate,
     Math.max(0, monthOffsetFrom2026(year, month))
+  );
+  const pharmacistAssignment = useMemo(
+    () => buildPharmacistAssignment(year, month),
+    [month, year]
   );
 
   function moveMonth(direction: -1 | 1) {
@@ -220,8 +224,9 @@ export default function App() {
             year={year}
             month={month}
             staffAssignments={staffAssignments}
-            pharmacistTasks={pharmacistTasks}
-            setPharmacistTasks={setPharmacistTasks}
+            pharmacistAssignment={pharmacistAssignment}
+            pharmacistCellEdits={pharmacistCellEdits}
+            setPharmacistCellEdits={setPharmacistCellEdits}
           />
         )}
 
@@ -387,14 +392,16 @@ function AssignmentTab({
   year,
   month,
   staffAssignments,
-  pharmacistTasks,
-  setPharmacistTasks
+  pharmacistAssignment,
+  pharmacistCellEdits,
+  setPharmacistCellEdits
 }: {
   year: number;
   month: number;
   staffAssignments: ReturnType<typeof rotateStaffAssignments>;
-  pharmacistTasks: Record<string, string>;
-  setPharmacistTasks: (value: Record<string, string>) => void;
+  pharmacistAssignment: PharmacistAssignment;
+  pharmacistCellEdits: Record<string, string>;
+  setPharmacistCellEdits: (value: Record<string, string>) => void;
 }) {
   const [selectedView, setSelectedView] = useState<AssignmentViewId>("staff");
   const selectedPrintView =
@@ -460,28 +467,58 @@ function AssignmentTab({
       )}
 
       {selectedView === "pharmacist" && (
-        <div className="assignment-single-panel">
-          <h3>약사 업무 분장 - {year}년 {month}월</h3>
-          <table className="assignment-table">
+        <div className="assignment-single-panel pharmacist-assignment-panel">
+          <h3>{pharmacistAssignment.title}</h3>
+          <p className="assignment-source-note">
+            약제팀 업무분장_2026.xlsx 틀을 기준으로 구성했습니다. 이름 칸은 모두 편집 가능하며, 지정 약사의 업무 칸만 수기 편집 대상입니다.
+          </p>
+          <table className="assignment-table pharmacist-assignment-table">
             <thead>
               <tr>
-                <th>이름/업무</th>
-                <th>수기 편집 내용</th>
+                {pharmacistAssignment.columns.map((column) => (
+                  <th key={column.key}>{column.label}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {editablePharmacistRows.map((row) => (
-                <tr key={row}>
-                  <td className="editable-cell" contentEditable suppressContentEditableWarning>{row}</td>
-                  <td>
-                    <textarea
-                      value={pharmacistTasks[row] ?? ""}
-                      onChange={(event) =>
-                        setPharmacistTasks({ ...pharmacistTasks, [row]: event.currentTarget.value })
-                      }
-                      placeholder="업무 내용을 입력하세요"
-                    />
-                  </td>
+              {pharmacistAssignment.rows.map((row) => (
+                <tr key={row.id} className={row.kind === "note" ? "note-row" : ""}>
+                  {pharmacistAssignment.columns.map((column) => {
+                    const cell = row.cells[column.key];
+                    const editKey = pharmacistEditKey(row.id, column.key);
+                    const value = pharmacistCellEdits[editKey] ?? cell.value;
+                    return (
+                      <td key={column.key} className={cell.editable ? "editable-cell" : ""}>
+                        {cell.editable ? (
+                          column.key === "name" ? (
+                            <input
+                              className="cell-input"
+                              value={value}
+                              onChange={(event) =>
+                                setPharmacistCellEdits({
+                                  ...pharmacistCellEdits,
+                                  [editKey]: event.currentTarget.value
+                                })
+                              }
+                            />
+                          ) : (
+                            <textarea
+                              className="cell-textarea"
+                              value={value}
+                              onChange={(event) =>
+                                setPharmacistCellEdits({
+                                  ...pharmacistCellEdits,
+                                  [editKey]: event.currentTarget.value
+                                })
+                              }
+                            />
+                          )
+                        ) : (
+                          cell.value
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

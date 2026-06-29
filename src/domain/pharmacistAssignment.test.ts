@@ -1,0 +1,45 @@
+import { describe, expect, it } from "vitest";
+import {
+  buildPharmacistAssignment,
+  pharmacistAssignmentColumns
+} from "./pharmacistAssignment";
+
+describe("pharmacist assignment template", () => {
+  it("uses the pharmacy team assignment spreadsheet frame", () => {
+    expect(pharmacistAssignmentColumns.map((column) => column.label)).toEqual([
+      "이름",
+      "7:15~",
+      "8:00-10:00",
+      "8:00-10:00 보조",
+      "10:00-11:30",
+      "11:30-12:30",
+      "12:30-1:30",
+      "1:30-3:00",
+      "3:00-5:30",
+      "담당업무"
+    ]);
+
+    const assignment = buildPharmacistAssignment(2026, 9);
+
+    expect(assignment.title).toBe("** 09월 01일 ~ 09월 30일 약제팀 업무분장 **");
+    expect(assignment.rows[0].cells.name.value).toBe("김옥선");
+    expect(assignment.rows.some((row) => row.cells.name.value === "이지은")).toBe(true);
+    expect(assignment.rows.some((row) => row.cells.name.value.startsWith("박주영"))).toBe(true);
+  });
+
+  it("makes all names editable but only requested pharmacist task cells editable", () => {
+    const assignment = buildPharmacistAssignment(2026, 9);
+    const nameCells = assignment.rows.filter((row) => row.kind === "person").map((row) => row.cells.name);
+    const leeJiEun = assignment.rows.find((row) => row.cells.name.value === "이지은");
+    const parkHyunYoung = assignment.rows.find((row) => row.cells.name.value === "박현영");
+    const ohAra = assignment.rows.find((row) => row.cells.name.value === "오아라");
+
+    expect(nameCells.every((cell) => cell.editable)).toBe(true);
+    expect(leeJiEun?.cells.early.editable).toBe(true);
+    expect(leeJiEun?.cells.duty.editable).toBe(true);
+    expect(parkHyunYoung?.cells.early.editable).toBe(true);
+    expect(parkHyunYoung?.cells.afternoonA.editable).toBe(false);
+    expect(ohAra?.cells.early.editable).toBe(false);
+  });
+});
+

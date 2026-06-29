@@ -412,15 +412,64 @@ textarea {
   overflow-x: auto;
 }
 
+.assignment-source-note {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .assignment-table th,
 .assignment-table td {
   min-width: 96px;
+}
+
+.pharmacist-assignment-table {
+  min-width: 1320px;
+}
+
+.pharmacist-assignment-table th:first-child,
+.pharmacist-assignment-table td:first-child {
+  min-width: 120px;
+}
+
+.pharmacist-assignment-table th:nth-child(2),
+.pharmacist-assignment-table td:nth-child(2) {
+  min-width: 86px;
+}
+
+.pharmacist-assignment-table th:nth-child(n + 3),
+.pharmacist-assignment-table td:nth-child(n + 3) {
+  min-width: 138px;
 }
 
 .editable-cell {
   background: #fffdf8;
   outline: 1px dashed #e5b07a;
   outline-offset: -4px;
+}
+
+.cell-input,
+.cell-textarea {
+  width: 100%;
+  border: 1px solid #e8c59f;
+  border-radius: 6px;
+  background: #fffefb;
+  padding: 6px;
+}
+
+.cell-input {
+  min-height: 32px;
+}
+
+.cell-textarea {
+  min-height: 54px;
+  resize: vertical;
+}
+
+.note-row td {
+  background: #f9fbfc;
+  color: var(--brown);
+  font-weight: 700;
 }
 
 .subtabs,
