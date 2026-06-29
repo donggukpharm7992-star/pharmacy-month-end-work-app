@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/storage.ts","./src/vite-env.d.ts","./src/domain/calendar.test.ts","./src/domain/calendar.ts","./src/domain/documents.test.ts","./src/domain/documents.ts","./src/domain/schedule.test.ts","./src/domain/schedule.ts","./src/domain/taskrotation.test.ts","./src/domain/taskrotation.ts","./vite.config.ts"],"version":"5.9.3"}
