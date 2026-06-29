@@ -582,10 +582,135 @@ textarea {
   padding: 14px;
 }
 
+.document-sheet-title,
+.document-item-list {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.document-sheet-title {
+  margin-bottom: 12px;
+}
+
+.document-sheet-title h3 {
+  margin-bottom: 4px;
+}
+
 .document-sheet p {
   margin: 0 0 12px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.document-note {
+  color: var(--brown) !important;
+  font-weight: 700;
+}
+
+.document-item-list {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.document-item-list > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.document-item-list h4 {
+  margin: 0 0 8px;
+  color: var(--brown);
+}
+
+.document-item-buttons,
+.equipment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.document-item-buttons {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.equipment-list {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  max-height: 230px;
+  overflow: auto;
+}
+
+.document-item-buttons button,
+.equipment-list button {
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  color: var(--brown);
+}
+
+.document-item-buttons button.selected,
+.equipment-list button.selected {
+  border-color: var(--orange);
+  background: #fff3e7;
+}
+
+.document-item-buttons span,
+.equipment-list span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.equipment-document-table {
+  table-layout: fixed;
+}
+
+.equipment-document-table th:first-child,
+.equipment-document-table td:first-child {
+  width: 94px;
+}
+
+.equipment-document-table th:nth-child(2),
+.equipment-document-table td:nth-child(2) {
+  width: 150px;
+}
+
+.equipment-document-table th:last-child,
+.equipment-document-table td:last-child {
+  width: 70px;
+}
+
+.equipment-document-table th:not(:first-child):not(:nth-child(2)):not(:last-child),
+.equipment-document-table td:not(:first-child):not(:nth-child(2)):not(:last-child) {
+  width: 32px;
+  padding: 4px 2px;
+}
+
+.equipment-document-table th span,
+.equipment-document-table th small,
+.holiday-inline {
+  display: block;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.date-highlight {
+  background: #fff3e7;
+}
+
+.selected-equipment-row td {
+  background: #fff7d6;
+}
+
+.compact-input {
+  min-height: 26px;
+  padding: 3px;
+  border-color: transparent;
+  background: transparent;
+  font-size: 11px;
 }
 
 .empty-write-cell {

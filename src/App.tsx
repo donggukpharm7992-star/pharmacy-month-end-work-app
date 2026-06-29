@@ -12,7 +12,7 @@ import {
 import { useMemo, useState } from "react";
 import appIcon from "./assets/app-icon.png";
 import palette from "./assets/palette.png";
-import { buildMonthDays, CalendarEvent, toDateKey } from "./domain/calendar";
+import { buildMonthDays, CalendarEvent, getHolidayName, isWeekend, toDateKey } from "./domain/calendar";
 import {
   buildMonthSchedule,
   buildScheduleWeeks,
@@ -240,7 +240,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === "documents" && <DocumentsTab year={year} month={month} />}
+        {activeTab === "documents" && <DocumentsTab year={year} month={month} onPrint={printCurrent} />}
 
         {activeTab === "checklists" && <ChecklistsTab year={year} month={month} onPrint={printCurrent} />}
       </main>
@@ -580,16 +580,49 @@ function AssignmentTab({
   );
 }
 
-function DocumentsTab({ year, month }: { year: number; month: number }) {
+function DocumentsTab({
+  year,
+  month,
+  onPrint
+}: {
+  year: number;
+  month: number;
+  onPrint: (orientation: PrintOrientation) => void;
+}) {
   const [selected, setSelected] = useState(monthEndDocumentGroups[0].title);
+  const [selectedItemId, setSelectedItemId] = useState(monthEndDocumentGroups[0].printItems[0].id);
+  const [selectedEquipmentAssetNo, setSelectedEquipmentAssetNo] = useState("");
   const group = monthEndDocumentGroups.find((item) => item.title === selected) ?? monthEndDocumentGroups[0];
-  const days = Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => index + 1);
+  const selectedItem = group.printItems.find((item) => item.id === selectedItemId) ?? group.printItems[0];
+  const days = Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => {
+    const day = index + 1;
+    const date = new Date(year, month - 1, day);
+    const dateKey = toDateKey(year, month, day);
+    return {
+      day,
+      weekday: ["일", "월", "화", "수", "목", "금", "토"][date.getDay()],
+      holidayName: getHolidayName(dateKey),
+      highlighted: isWeekend(date) || getHolidayName(dateKey) != null
+    };
+  });
+
+  function selectGroup(nextGroupTitle: string) {
+    const nextGroup = monthEndDocumentGroups.find((item) => item.title === nextGroupTitle) ?? monthEndDocumentGroups[0];
+    setSelected(nextGroup.title);
+    setSelectedItemId(nextGroup.printItems[0].id);
+    setSelectedEquipmentAssetNo("");
+  }
+
+  function selectPrintItem(nextItemId: string) {
+    setSelectedItemId(nextItemId);
+    setSelectedEquipmentAssetNo("");
+  }
 
   return (
     <section className="panel print-page">
       <div className="section-title">
         <h2>월말 결재 서류</h2>
-        <p>원본 엑셀 서류의 출력 단위를 앱 안에서 편집 가능한 표로 재구성합니다.</p>
+        <p>원본 엑셀 서류의 시트와 장비 목록을 선택해 낱장으로 출력합니다.</p>
       </div>
       <div className="subtabs no-print">
         {monthEndDocumentGroups.map((item) => (
@@ -597,7 +630,7 @@ function DocumentsTab({ year, month }: { year: number; month: number }) {
             key={item.title}
             type="button"
             className={item.title === selected ? "selected" : ""}
-            onClick={() => setSelected(item.title)}
+            onClick={() => selectGroup(item.title)}
           >
             {item.title}
           </button>
@@ -605,38 +638,124 @@ function DocumentsTab({ year, month }: { year: number; month: number }) {
       </div>
 
       <div className="document-sheet">
-        <h3>{year}년 {month}월 {group.title}</h3>
-        <p>원본 파일: {group.sourceFile}</p>
+        <div className="document-sheet-title">
+          <div>
+            <h3>{year}년 {month}월 {selectedItem.title}</h3>
+            <p>원본 파일: {group.sourceFile} / 시트: {selectedItem.sourceSheet}</p>
+          </div>
+          <button type="button" className="no-print" onClick={() => onPrint(selectedItem.orientation)}>
+            <Printer size={16} /> 선택 서류 출력
+          </button>
+        </div>
         <div className="editable-fields no-print">
-          {group.editableFields.map((field) => (
-            <label key={field}>
+          {[...group.editableFields, ...selectedItem.columns].map((field, index) => (
+            <label key={`${field}-${index}`}>
               <span>{field}</span>
               <input defaultValue={field} />
             </label>
           ))}
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>날짜</th>
-              {group.editableFields.map((field) => (
-                <th key={field}>{field}</th>
-              ))}
-              <th>확인</th>
-            </tr>
-          </thead>
-          <tbody>
-            {days.map((day) => (
-              <tr key={day}>
-                <td>{day}일</td>
-                {group.editableFields.map((field) => (
-                  <td className="empty-write-cell" key={field}></td>
+        {selectedItem.notes?.map((note) => (
+          <p className="document-note" key={note}>{note}</p>
+        ))}
+
+        {selectedItem.equipment ? (
+          <table className="equipment-document-table">
+            <thead>
+              <tr>
+                <th>자산번호</th>
+                <th>장비명</th>
+                {days.map(({ day, weekday, holidayName, highlighted }) => (
+                  <th className={highlighted ? "date-highlight" : ""} key={day}>
+                    {day}
+                    <span>{weekday}</span>
+                    {holidayName && <small>{holidayName}</small>}
+                  </th>
                 ))}
-                <td></td>
+                <th>점검자 확인</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {selectedItem.equipment.map((equipment) => (
+                <tr
+                  className={equipment.assetNo === selectedEquipmentAssetNo ? "selected-equipment-row" : ""}
+                  key={equipment.assetNo}
+                >
+                  <td><input className="cell-input compact-input" defaultValue={equipment.assetNo} /></td>
+                  <td><input className="cell-input compact-input" defaultValue={equipment.name} /></td>
+                  {days.map(({ day, highlighted }) => (
+                    <td className={`empty-write-cell ${highlighted ? "date-highlight" : ""}`} key={day}></td>
+                  ))}
+                  <td></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>요일</th>
+                {selectedItem.columns.map((field) => (
+                  <th key={field}>{field}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {days.map(({ day, weekday, holidayName, highlighted }) => (
+                <tr className={highlighted ? "date-highlight" : ""} key={day}>
+                  <td>{day}일</td>
+                  <td>
+                    {weekday}
+                    {holidayName && <small className="holiday-inline">{holidayName}</small>}
+                  </td>
+                  {selectedItem.columns.map((field) => (
+                    <td className="empty-write-cell" key={field}></td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <div className="document-item-list no-print">
+          <div>
+            <h4>출력 항목 목록</h4>
+            <div className="document-item-buttons">
+              {group.printItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={item.id === selectedItem.id ? "selected" : ""}
+                  onClick={() => selectPrintItem(item.id)}
+                >
+                  <strong>{item.title}</strong>
+                  <span>{item.sourceSheet}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {selectedItem.equipment && (
+            <div>
+              <h4>장비 목록</h4>
+              <div className="equipment-list">
+                {selectedItem.equipment.map((equipment) => (
+                  <button
+                    key={equipment.assetNo}
+                    type="button"
+                    className={equipment.assetNo === selectedEquipmentAssetNo ? "selected" : ""}
+                    onClick={() => setSelectedEquipmentAssetNo(equipment.assetNo)}
+                  >
+                    <span>{equipment.assetNo}</span>
+                    <strong>{equipment.name}</strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
