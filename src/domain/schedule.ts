@@ -161,6 +161,29 @@ function buildEvents(eventDates: ScheduleEventDates = {}): CalendarEvent[] {
     }));
 }
 
+export function buildNightPharmacistTurnEvents(year: number, month: number): CalendarEvent[] {
+  const firstOfMonth = dateKeyToDate(toDateKey(year, month, 1));
+  const lastOfMonth = dateKeyToDate(toDateKey(year, month, daysInMonth(year, month)));
+  const anchor = dateKeyToDate(NIGHT_PHARMACIST_TURN_ANCHOR);
+  const events: CalendarEvent[] = [];
+  let turnDate = anchor;
+
+  while (turnDate < firstOfMonth) {
+    turnDate = new Date(turnDate.getFullYear(), turnDate.getMonth(), turnDate.getDate() + 42);
+  }
+
+  while (turnDate <= lastOfMonth) {
+    events.push({
+      date: toDateKey(turnDate.getFullYear(), turnDate.getMonth() + 1, turnDate.getDate()),
+      title: "나이트 턴 변경",
+      type: "turn"
+    });
+    turnDate = new Date(turnDate.getFullYear(), turnDate.getMonth(), turnDate.getDate() + 42);
+  }
+
+  return events;
+}
+
 function dayPharmacistNames(
   dateKey: string,
   weekday: number,
@@ -195,7 +218,7 @@ export function buildMonthSchedule(
   const nightStaffPositions = options.nightStaffPositions ?? defaultNightStaffPositions;
   const weekendStaff = options.weekendStaff ?? defaultWeekendStaff;
   const weekendPharmacists = options.weekendPharmacists ?? defaultWeekendPharmacists;
-  const events = buildEvents(options.eventDates);
+  const events = [...buildEvents(options.eventDates), ...buildNightPharmacistTurnEvents(year, month)];
   let weekendStaffCursor = 0;
 
   const days: ScheduleDay[] = Array.from({ length: daysInMonth(year, month) }, (_, index) => {

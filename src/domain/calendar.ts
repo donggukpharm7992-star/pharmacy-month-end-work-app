@@ -24,7 +24,7 @@ export type MonthCell = {
   events: CalendarEvent[];
 };
 
-export const koreanHolidays2026: Record<string, string> = {
+export const koreanHolidays: Record<string, string> = {
   "2026-01-01": "신정",
   "2026-02-16": "설날 연휴",
   "2026-02-17": "설날",
@@ -44,7 +44,28 @@ export const koreanHolidays2026: Record<string, string> = {
   "2026-10-03": "개천절",
   "2026-10-05": "개천절 대체공휴일",
   "2026-10-09": "한글날",
-  "2026-12-25": "성탄절"
+  "2026-12-25": "성탄절",
+  "2027-01-01": "신정",
+  "2027-02-06": "설날 연휴",
+  "2027-02-07": "설날",
+  "2027-02-08": "설날 연휴",
+  "2027-02-09": "설날 대체공휴일",
+  "2027-03-01": "삼일절",
+  "2027-05-05": "어린이날",
+  "2027-05-13": "부처님오신날",
+  "2027-06-06": "현충일",
+  "2027-06-07": "현충일 대체공휴일",
+  "2027-08-15": "광복절",
+  "2027-08-16": "광복절 대체공휴일",
+  "2027-09-14": "추석 연휴",
+  "2027-09-15": "추석",
+  "2027-09-16": "추석 연휴",
+  "2027-10-03": "개천절",
+  "2027-10-04": "개천절 대체공휴일",
+  "2027-10-09": "한글날",
+  "2027-10-11": "한글날 대체공휴일",
+  "2027-12-25": "성탄절",
+  "2027-12-27": "성탄절 대체공휴일"
 };
 
 export function toDateKey(year: number, month: number, day: number): string {
@@ -66,7 +87,7 @@ export function isWeekend(date: Date): boolean {
 }
 
 export function getHolidayName(dateKey: string): string | undefined {
-  return koreanHolidays2026[dateKey];
+  return koreanHolidays[dateKey];
 }
 
 export function isHoliday(dateKey: string): boolean {
@@ -100,4 +121,3 @@ export function buildMonthDays(
 
   return cells;
 }
-

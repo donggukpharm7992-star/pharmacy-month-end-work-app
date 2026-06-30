@@ -24,6 +24,7 @@ import {
   ScheduleEventDates
 } from "./domain/schedule";
 import {
+  buildChecklistMonthDays,
   checklistPrintGroups,
   monthEndDocumentGroups,
   notebookChecklistGroups,
@@ -91,11 +92,52 @@ function pharmacistEditKey(rowId: string, columnKey: PharmacistAssignmentColumnK
   return `${rowId}:${columnKey}`;
 }
 
+function staffAssignmentEditKey(
+  year: number,
+  month: number,
+  rowIndex: number,
+  columnKey: StaffAssignmentColumnKey
+) {
+  return `${year}-${String(month).padStart(2, "0")}:${rowIndex}:${columnKey}`;
+}
+
 function staffCellValue(
   row: ReturnType<typeof rotateStaffAssignments>[number],
   columnKey: StaffAssignmentColumnKey
 ) {
   return row[columnKey] ?? "";
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function downloadExcelFile(filename: string, title: string, headers: string[], rows: string[][]) {
+  const table = `
+    <table border="1">
+      <caption>${escapeHtml(title)}</caption>
+      <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
+      <tbody>
+        ${rows
+          .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell).replace(/\n/g, "<br />")}</td>`).join("")}</tr>`)
+          .join("")}
+      </tbody>
+    </table>
+  `;
+  const html = `<!doctype html><html><head><meta charset="UTF-8" /></head><body>${table}</body></html>`;
+  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export default function App() {
@@ -128,6 +170,10 @@ export default function App() {
     "pharmacy-app-pharmacist-assignment-edits",
     {}
   );
+  const [staffCellEdits, setStaffCellEdits] = useLocalStorageState<Record<string, string>>(
+    "pharmacy-app-staff-assignment-edits",
+    {}
+  );
 
   const schedule = useMemo(
     () =>
@@ -141,11 +187,7 @@ export default function App() {
     [eventDates, lists, month, year]
   );
 
-  const calendarEvents: CalendarEvent[] = schedule.events.concat({
-    date: "2026-09-21",
-    title: "나이트 턴 변경",
-    type: "turn"
-  });
+  const calendarEvents: CalendarEvent[] = schedule.events;
   const calendarCells = buildMonthDays(year, month, calendarEvents);
   const staffAssignments = rotateStaffAssignments(
     staffAssignmentTemplate,
@@ -234,6 +276,8 @@ export default function App() {
             year={year}
             month={month}
             staffAssignments={staffAssignments}
+            staffCellEdits={staffCellEdits}
+            setStaffCellEdits={setStaffCellEdits}
             pharmacistAssignment={pharmacistAssignment}
             pharmacistCellEdits={pharmacistCellEdits}
             setPharmacistCellEdits={setPharmacistCellEdits}
@@ -442,6 +486,8 @@ function AssignmentTab({
   year,
   month,
   staffAssignments,
+  staffCellEdits,
+  setStaffCellEdits,
   pharmacistAssignment,
   pharmacistCellEdits,
   setPharmacistCellEdits
@@ -449,6 +495,8 @@ function AssignmentTab({
   year: number;
   month: number;
   staffAssignments: ReturnType<typeof rotateStaffAssignments>;
+  staffCellEdits: Record<string, string>;
+  setStaffCellEdits: (value: Record<string, string>) => void;
   pharmacistAssignment: PharmacistAssignment;
   pharmacistCellEdits: Record<string, string>;
   setPharmacistCellEdits: (value: Record<string, string>) => void;
@@ -457,19 +505,54 @@ function AssignmentTab({
   const selectedPrintView =
     assignmentPrintViews.find((view) => view.id === selectedView) ?? assignmentPrintViews[0];
 
+  function getStaffEditValue(
+    row: ReturnType<typeof rotateStaffAssignments>[number],
+    rowIndex: number,
+    columnKey: StaffAssignmentColumnKey
+  ) {
+    const editKey = staffAssignmentEditKey(year, month, rowIndex, columnKey);
+    return staffCellEdits[editKey] ?? staffCellValue(row, columnKey);
+  }
+
+  function exportAssignmentExcel() {
+    if (selectedView === "staff") {
+      downloadExcelFile(
+        `직원_업무분장_${year}-${String(month).padStart(2, "0")}.xls`,
+        `${year}년 ${month}월 직원 업무 분장`,
+        staffAssignmentColumns.map((column) => column.label),
+        staffAssignments.map((row, rowIndex) =>
+          staffAssignmentColumns.map((column) => getStaffEditValue(row, rowIndex, column.key))
+        )
+      );
+      return;
+    }
+
+    downloadExcelFile(
+      `약사_업무분장_${year}-${String(month).padStart(2, "0")}.xls`,
+      pharmacistAssignment.title,
+      pharmacistAssignment.columns.map((column) => column.label),
+      pharmacistAssignment.rows.map((row) =>
+        pharmacistAssignment.columns.map((column) => {
+          const editKey = pharmacistEditKey(row.id, column.key);
+          return pharmacistCellEdits[editKey] ?? row.cells[column.key].value;
+        })
+      )
+    );
+  }
+
   return (
     <section className={`panel print-page assignment-print-page ${selectedPrintView.id}`}>
       <div className="section-title row-title">
         <div>
           <h2>업무 분장</h2>
-          <p>직원 업무 분장과 약사 업무 분장을 하위 탭으로 분리해 각각 한 장씩 출력합니다.</p>
+          <p>직원 업무 분장과 약사 업무 분장을 하위 탭으로 분리하고, 모든 칸을 저장 가능한 수기 입력으로 관리합니다.</p>
         </div>
         <button
           type="button"
           className="quiet no-print"
-          onClick={() => window.print()}
+          onClick={exportAssignmentExcel}
         >
-          <Printer size={16} /> {selectedPrintView.title} 출력
+          <Save size={16} /> {selectedPrintView.title} 엑셀 출력
         </button>
       </div>
 
@@ -498,18 +581,40 @@ function AssignmentTab({
               </tr>
             </thead>
             <tbody>
-              {staffAssignments.map((row) => (
-                <tr key={row.task}>
-                  {staffAssignmentColumns.map((column) => (
-                    <td
-                      key={`${row.task}-${column.key}`}
-                      className={column.editable ? "editable-cell" : "staff-task-text"}
-                      contentEditable={column.editable}
-                      suppressContentEditableWarning={column.editable}
-                    >
-                      {staffCellValue(row, column.key)}
-                    </td>
-                  ))}
+              {staffAssignments.map((row, rowIndex) => (
+                <tr key={`${row.task}-${rowIndex}`}>
+                  {staffAssignmentColumns.map((column) => {
+                    const editKey = staffAssignmentEditKey(year, month, rowIndex, column.key);
+                    const value = getStaffEditValue(row, rowIndex, column.key);
+                    const compact = column.key === "task" || column.key.includes("Name") || column.key.includes("lunch");
+                    return (
+                      <td key={`${rowIndex}-${column.key}`} className="editable-cell staff-task-text">
+                        {compact ? (
+                          <input
+                            className="cell-input"
+                            value={value}
+                            onChange={(event) =>
+                              setStaffCellEdits({
+                                ...staffCellEdits,
+                                [editKey]: event.currentTarget.value
+                              })
+                            }
+                          />
+                        ) : (
+                          <textarea
+                            className="cell-textarea assignment-textarea"
+                            value={value}
+                            onChange={(event) =>
+                              setStaffCellEdits({
+                                ...staffCellEdits,
+                                [editKey]: event.currentTarget.value
+                              })
+                            }
+                          />
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -521,7 +626,7 @@ function AssignmentTab({
         <div className="assignment-single-panel pharmacist-assignment-panel">
           <h3>{pharmacistAssignment.title}</h3>
           <p className="assignment-source-note">
-            약제팀 업무분장_2026.xlsx 틀을 기준으로 구성했습니다. 이름 칸은 모두 편집 가능하며, 지정 약사의 업무 칸만 수기 편집 대상입니다.
+            약제팀 업무분장_2026.xlsx 틀을 기준으로 구성했습니다. 모든 표시 칸은 수기 편집 후 저장됩니다.
           </p>
           <table className="assignment-table pharmacist-assignment-table">
             <thead>
@@ -771,7 +876,17 @@ function ChecklistsTab({
   onPrint: (orientation: PrintOrientation) => void;
 }) {
   const [selected, setSelected] = useState("staff");
-  const allGroups = selected === "staff" ? checklistPrintGroups : notebookChecklistGroups;
+  const [selectedNotebook, setSelectedNotebook] = useState("1");
+  const monthDays = buildChecklistMonthDays(year, month);
+  const notebookGroups =
+    selectedNotebook === "all"
+      ? notebookChecklistGroups
+      : notebookChecklistGroups.filter((_, index) => String(index + 1) === selectedNotebook);
+
+  function checklistStandard(section: string, item: string) {
+    if (section === "PTP 업무" && item.includes("칼시오")) return "60포";
+    return "";
+  }
 
   return (
     <section className="panel print-page">
@@ -790,45 +905,122 @@ function ChecklistsTab({
         </div>
       </div>
 
-      <div className="checklist-pages">
-        {allGroups.map((group) => (
-          <article className={`checklist-page ${group.orientation}`} key={group.title}>
-            <div className="checklist-title">
-              <h3>{year}년 {month}월 {group.title}</h3>
-              <button type="button" className="no-print" onClick={() => onPrint(group.orientation)}>
-                <Printer size={16} /> 이 장 출력
-              </button>
-            </div>
-            {group.sections.map((section) => (
-              <div key={section}>
-                <h4>{section}</h4>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>번호</th>
-                      <th>체크 항목</th>
-                      {Array.from({ length: 7 }, (_, index) => (
-                        <th key={index}>{month}/{index + 1}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(staffChecklistSections[section] ?? ["점검", "충전 상태", "보관 위치", "비고"]).map((item, index) => (
-                      <tr key={item}>
-                        <td>{index + 1}</td>
-                        <td>{item}</td>
-                        {Array.from({ length: 7 }, (_, dayIndex) => (
-                          <td className="empty-write-cell" key={dayIndex}></td>
+      {selected === "staff" && (
+        <div className="checklist-pages">
+          {checklistPrintGroups.map((group) => (
+            <article className={`checklist-page ${group.orientation}`} key={group.title}>
+              <div className="checklist-title">
+                <h3>{year}년 {month}월 {group.title}</h3>
+                <button type="button" className="no-print" onClick={() => onPrint("landscape")}>
+                  <Printer size={16} /> 이 장 출력
+                </button>
+              </div>
+              {group.sections.map((section) => (
+                <div key={section} className="checklist-table-wrap">
+                  <h4>{section}</h4>
+                  <table className="monthly-checklist-table">
+                    <thead>
+                      <tr>
+                        <th rowSpan={2}>번호</th>
+                        <th rowSpan={2}>체크 항목</th>
+                        <th rowSpan={2}>기준</th>
+                        {monthDays.map((day) => (
+                          <th className={day.offDay ? "date-highlight" : ""} key={day.dateKey}>{month}/{day.day}</th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      <tr>
+                        {monthDays.map((day) => (
+                          <th className={day.offDay ? "date-highlight" : ""} key={`${day.dateKey}-weekday`}>
+                            {day.weekdayLabel}
+                            {day.holidayName && <small>{day.holidayName}</small>}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(staffChecklistSections[section] ?? []).map((item, index) => (
+                        <tr key={item}>
+                          <td>{index + 1}</td>
+                          <td className="checklist-item-cell">{item}</td>
+                          <td>{checklistStandard(section, item)}</td>
+                          {monthDays.map((day) => (
+                            <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={day.dateKey}></td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </article>
+          ))}
+        </div>
+      )}
+
+      {selected === "notebook" && (
+        <div className="checklist-pages">
+          <div className="notebook-selector no-print">
+            {notebookChecklistGroups.map((group, index) => (
+              <button
+                key={group.title}
+                type="button"
+                className={selectedNotebook === String(index + 1) ? "selected" : ""}
+                onClick={() => setSelectedNotebook(String(index + 1))}
+              >
+                {index + 1}번
+              </button>
             ))}
-          </article>
-        ))}
-      </div>
+            <button
+              type="button"
+              className={selectedNotebook === "all" ? "selected" : ""}
+              onClick={() => setSelectedNotebook("all")}
+            >
+              전체
+            </button>
+            <button type="button" className="quiet" onClick={() => onPrint("portrait")}>
+              <Printer size={16} /> {selectedNotebook === "all" ? "전체 출력" : "선택 출력"}
+            </button>
+          </div>
+          {notebookGroups.map((group) => (
+            <article className="checklist-page portrait notebook-checklist-page" key={group.title}>
+              <div className="checklist-title">
+                <h3>{year}년 {month}월 {group.title}</h3>
+              </div>
+              <table className="notebook-month-table">
+                <thead>
+                  <tr>
+                    <th>날짜</th>
+                    <th>요일</th>
+                    <th>전원</th>
+                    <th>인터넷</th>
+                    <th>충전기</th>
+                    <th>보관 위치</th>
+                    <th>비고</th>
+                    <th>확인</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthDays.map((day) => (
+                    <tr className={day.offDay ? "date-highlight" : ""} key={day.dateKey}>
+                      <td>{month}/{day.day}</td>
+                      <td>
+                        {day.weekdayLabel}
+                        {day.holidayName && <small className="holiday-inline">{day.holidayName}</small>}
+                      </td>
+                      <td className="empty-write-cell"></td>
+                      <td className="empty-write-cell"></td>
+                      <td className="empty-write-cell"></td>
+                      <td className="empty-write-cell"></td>
+                      <td className="empty-write-cell"></td>
+                      <td className="empty-write-cell"></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

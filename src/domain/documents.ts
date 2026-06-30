@@ -1,9 +1,19 @@
+import { dateKeyToDate, daysInMonth, getHolidayName, isWeekend, toDateKey } from "./calendar";
+
 export type PrintOrientation = "portrait" | "landscape";
 
 export type PrintableGroup = {
   title: string;
   sections: string[];
   orientation: PrintOrientation;
+};
+
+export type ChecklistMonthDay = {
+  day: number;
+  dateKey: string;
+  weekdayLabel: string;
+  holidayName?: string;
+  offDay: boolean;
 };
 
 export type DocumentEquipment = {
@@ -28,6 +38,24 @@ export type MonthEndDocumentGroup = {
   orientation: PrintOrientation;
   printItems: MonthEndPrintItem[];
 };
+
+const weekdayLabels = ["일", "월", "화", "수", "목", "금", "토"];
+
+export function buildChecklistMonthDays(year: number, month: number): ChecklistMonthDay[] {
+  return Array.from({ length: daysInMonth(year, month) }, (_, index) => {
+    const day = index + 1;
+    const dateKey = toDateKey(year, month, day);
+    const date = dateKeyToDate(dateKey);
+    const holidayName = getHolidayName(dateKey);
+    return {
+      day,
+      dateKey,
+      weekdayLabel: weekdayLabels[date.getDay()],
+      holidayName,
+      offDay: isWeekend(date) || holidayName != null
+    };
+  });
+}
 
 export const monthEndDocumentGroups: MonthEndDocumentGroup[] = [
   {

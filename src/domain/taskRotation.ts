@@ -37,18 +37,18 @@ export type StaffAssignmentColumn = {
 };
 
 export const staffAssignmentColumns: StaffAssignmentColumn[] = [
-  { key: "task", label: "업무" },
+  { key: "task", label: "업무", editable: true },
   { key: "primaryName", label: "시 간", editable: true },
   { key: "helperName", label: "7:15~8:00", editable: true },
   { key: "secondHelperName", label: "", editable: true },
-  { key: "morningTask", label: "8:00-11:30" },
-  { key: "lunchEarly", label: "11:45-12:30" },
-  { key: "lunchLate", label: "12:30-13:30" },
-  { key: "afternoonTask", label: "13:30-17:00" },
-  { key: "eveningTask", label: "18:00:00" },
-  { key: "deepCleanTask", label: "대청고" },
-  { key: "inventoryTask", label: "재고 조사/유효기간" },
-  { key: "medicineRefillTask", label: "약 채우기" }
+  { key: "morningTask", label: "8:00-11:30", editable: true },
+  { key: "lunchEarly", label: "11:45-12:30", editable: true },
+  { key: "lunchLate", label: "12:30-13:30", editable: true },
+  { key: "afternoonTask", label: "13:30-17:00", editable: true },
+  { key: "eveningTask", label: "18:00:00", editable: true },
+  { key: "deepCleanTask", label: "대청고", editable: true },
+  { key: "inventoryTask", label: "재고 조사/유효기간", editable: true },
+  { key: "medicineRefillTask", label: "약 채우기", editable: true }
 ];
 
 export const staffAssignmentTemplate: StaffAssignmentRow[] = [
@@ -151,8 +151,6 @@ function rotateRight<T>(items: T[], steps: number): T[] {
   return [...items.slice(items.length - normalized), ...items.slice(0, items.length - normalized)];
 }
 
-const earlyLunchPrimaryNames = ["김동희", "박지숙", "지현"];
-
 export function rotateStaffAssignments(
   rows: StaffAssignmentRow[],
   monthOffset: number
@@ -182,20 +180,14 @@ export function rotateStaffAssignments(
       ? rotatedHelpers[helperSlots.findIndex((slot) => slot.index === index && slot.key === "secondHelperName")]
       : undefined;
     const primaryName = primaryNames[index];
-    const rowHelperNames = [helperName, secondHelperName].filter(Boolean);
-    const lunchSlot = earlyLunchPrimaryNames.includes(primaryName)
-      ? "11:45-12:30"
-      : rowHelperNames.includes(primaryName)
-        ? "12:30-13:30"
-        : row.lunchSlot;
     return {
       ...row,
       primaryName,
       helperName,
       secondHelperName,
-      lunchEarly: lunchSlot === "11:45-12:30" ? "식사" : "",
-      lunchLate: lunchSlot === "12:30-13:30" ? "식사" : "",
-      lunchSlot
+      lunchEarly: "",
+      lunchLate: "식사",
+      lunchSlot: "12:30-13:30"
     };
   });
 }

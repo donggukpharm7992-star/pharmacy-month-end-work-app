@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildChecklistMonthDays,
   checklistPrintGroups,
   monthEndDocumentGroups,
   notebookChecklistGroups
@@ -57,6 +58,23 @@ describe("document and checklist grouping", () => {
     expect(notebookChecklistGroups[0]).toMatchObject({
       title: "1번 노트북 체크리스트",
       orientation: "portrait"
+    });
+  });
+
+  it("builds checklist date columns for the full selected month", () => {
+    const days = buildChecklistMonthDays(2027, 1);
+
+    expect(days).toHaveLength(31);
+    expect(days[0]).toMatchObject({
+      day: 1,
+      weekdayLabel: "금",
+      holidayName: "신정",
+      offDay: true
+    });
+    expect(days[30]).toMatchObject({
+      day: 31,
+      weekdayLabel: "일",
+      offDay: true
     });
   });
 });

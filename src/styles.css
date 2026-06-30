@@ -561,6 +561,10 @@ textarea {
   resize: vertical;
 }
 
+.assignment-textarea {
+  min-height: 70px;
+}
+
 .note-row td {
   background: #f9fbfc;
   color: var(--brown);
@@ -742,6 +746,67 @@ textarea {
   margin-bottom: 14px;
 }
 
+.checklist-table-wrap {
+  overflow-x: auto;
+}
+
+.monthly-checklist-table {
+  min-width: 1180px;
+  table-layout: fixed;
+}
+
+.monthly-checklist-table th,
+.monthly-checklist-table td {
+  min-width: 30px;
+  padding: 4px 3px;
+  font-size: 11px;
+}
+
+.monthly-checklist-table th:first-child,
+.monthly-checklist-table td:first-child {
+  min-width: 42px;
+  width: 42px;
+}
+
+.monthly-checklist-table th:nth-child(2),
+.monthly-checklist-table td:nth-child(2) {
+  min-width: 210px;
+  width: 210px;
+}
+
+.monthly-checklist-table th:nth-child(3),
+.monthly-checklist-table td:nth-child(3) {
+  min-width: 50px;
+  width: 50px;
+}
+
+.monthly-checklist-table small {
+  display: block;
+  font-size: 9px;
+  line-height: 1.15;
+}
+
+.checklist-item-cell {
+  text-align: left;
+  white-space: pre-line;
+}
+
+.notebook-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.notebook-month-table th,
+.notebook-month-table td {
+  height: 28px;
+}
+
+.notebook-checklist-page {
+  break-after: page;
+}
+
 @media (max-width: 1120px) {
   .app {
     grid-template-columns: 1fr;
@@ -824,5 +889,37 @@ textarea {
   td {
     font-size: 10px;
     padding: 4px;
+  }
+
+  .monthly-checklist-table {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .monthly-checklist-table th,
+  .monthly-checklist-table td {
+    font-size: 7px;
+    padding: 2px 1px;
+    min-width: 0;
+  }
+
+  .monthly-checklist-table th:nth-child(2),
+  .monthly-checklist-table td:nth-child(2) {
+    width: 92px;
+    min-width: 92px;
+  }
+
+  .monthly-checklist-table th:nth-child(3),
+  .monthly-checklist-table td:nth-child(3) {
+    width: 26px;
+    min-width: 26px;
+  }
+
+  .checklist-table-wrap {
+    overflow: visible;
+  }
+
+  .notebook-month-table {
+    width: 100%;
   }
 }

@@ -45,25 +45,6 @@ export const pharmacistAssignmentColumns: PharmacistAssignmentColumn[] = [
   { key: "duty", label: "담당업무" }
 ];
 
-const taskColumnKeys: PharmacistAssignmentColumnKey[] = [
-  "early",
-  "morningSupport",
-  "morningMain",
-  "lunchEarly",
-  "lunchLate",
-  "afternoonA",
-  "afternoonB",
-  "duty"
-];
-
-const morningColumnKeys: PharmacistAssignmentColumnKey[] = [
-  "early",
-  "morningSupport",
-  "morningMain"
-];
-
-const fullEditablePharmacists = ["이지은", "박혜정", "김경원", "김수빈", "박주영"];
-
 const sourceRows: Array<{
   id: string;
   kind?: "person" | "note";
@@ -373,21 +354,12 @@ const sourceRows: Array<{
   }
 ];
 
-function isFullEditablePharmacist(name: string) {
-  return fullEditablePharmacists.some((pharmacist) => name.startsWith(pharmacist));
-}
-
 function isEditableCell(
-  rowKind: "person" | "note",
-  name: string,
-  key: PharmacistAssignmentColumnKey
+  _rowKind: "person" | "note",
+  _name: string,
+  _key: PharmacistAssignmentColumnKey
 ) {
-  if (rowKind !== "person") return false;
-  if (key === "name") return true;
-  if (key === "code") return false;
-  if (isFullEditablePharmacist(name)) return taskColumnKeys.includes(key);
-  if (name.startsWith("박현영")) return morningColumnKeys.includes(key);
-  return false;
+  return true;
 }
 
 function createCell(
@@ -425,4 +397,3 @@ export function buildPharmacistAssignment(year: number, month: number): Pharmaci
     })
   };
 }
-

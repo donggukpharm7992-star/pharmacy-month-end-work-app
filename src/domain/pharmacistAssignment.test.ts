@@ -27,19 +27,15 @@ describe("pharmacist assignment template", () => {
     expect(assignment.rows.some((row) => row.cells.name.value.startsWith("박주영"))).toBe(true);
   });
 
-  it("makes all names editable but only requested pharmacist task cells editable", () => {
+  it("makes every visible person cell manually editable", () => {
     const assignment = buildPharmacistAssignment(2026, 9);
-    const nameCells = assignment.rows.filter((row) => row.kind === "person").map((row) => row.cells.name);
-    const leeJiEun = assignment.rows.find((row) => row.cells.name.value === "이지은");
-    const parkHyunYoung = assignment.rows.find((row) => row.cells.name.value === "박현영");
-    const ohAra = assignment.rows.find((row) => row.cells.name.value === "오아라");
+    const personRows = assignment.rows.filter((row) => row.kind === "person");
 
-    expect(nameCells.every((cell) => cell.editable)).toBe(true);
-    expect(leeJiEun?.cells.early.editable).toBe(true);
-    expect(leeJiEun?.cells.duty.editable).toBe(true);
-    expect(parkHyunYoung?.cells.early.editable).toBe(true);
-    expect(parkHyunYoung?.cells.afternoonA.editable).toBe(false);
-    expect(ohAra?.cells.early.editable).toBe(false);
+    expect(personRows.length).toBeGreaterThan(0);
+    personRows.forEach((row) => {
+      pharmacistAssignmentColumns.forEach((column) => {
+        expect(row.cells[column.key].editable).toBe(true);
+      });
+    });
   });
 });
-

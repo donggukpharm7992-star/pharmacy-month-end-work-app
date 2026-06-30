@@ -3,6 +3,7 @@ import {
   assignNightPharmacists,
   assignNightStaff,
   buildMonthSchedule,
+  buildNightPharmacistTurnEvents,
   buildScheduleWeeks,
   rotateNightPharmacists
 } from "./schedule";
@@ -68,6 +69,19 @@ describe("schedule rules", () => {
       type: "monthlyMeeting"
     });
     expect(schedule.days.find((day) => day.dateKey === "2026-09-26")?.morningStaff).toHaveLength(2);
+  });
+
+  it("surfaces automatic night pharmacist turn changes every six weeks", () => {
+    expect(buildNightPharmacistTurnEvents(2026, 9)).toContainEqual({
+      date: "2026-09-21",
+      title: "나이트 턴 변경",
+      type: "turn"
+    });
+    expect(buildNightPharmacistTurnEvents(2026, 11)).toContainEqual({
+      date: "2026-11-02",
+      title: "나이트 턴 변경",
+      type: "turn"
+    });
   });
 
   it("keeps Seo Yunseok fixed only on Sundays, not on holidays", () => {

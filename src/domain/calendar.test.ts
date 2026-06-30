@@ -8,10 +8,12 @@ import {
 } from "./calendar";
 
 describe("calendar rules", () => {
-  it("marks weekends and 2026 Korean public holidays for the selected month", () => {
+  it("marks weekends and Korean public holidays for the selected month", () => {
     expect(toDateKey(2026, 9, 24)).toBe("2026-09-24");
     expect(isHoliday("2026-09-24")).toBe(true);
     expect(getHolidayName("2026-09-24")).toBe("추석 연휴");
+    expect(isHoliday("2027-01-01")).toBe(true);
+    expect(getHolidayName("2027-01-01")).toBe("신정");
     expect(isHoliday("2026-09-28")).toBe(false);
     expect(isWeekend(new Date(2026, 8, 26))).toBe(true);
   });
@@ -27,4 +29,3 @@ describe("calendar rules", () => {
     expect(days.find((day) => day.dateKey === "2026-09-24")?.holidayName).toBe("추석 연휴");
   });
 });
-
