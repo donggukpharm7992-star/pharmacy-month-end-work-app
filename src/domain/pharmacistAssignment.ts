@@ -23,6 +23,7 @@ export type PharmacistAssignmentCell = {
 export type PharmacistAssignmentRow = {
   id: string;
   kind: "person" | "note";
+  merged?: boolean;
   cells: Record<PharmacistAssignmentColumnKey, PharmacistAssignmentCell>;
 };
 
@@ -30,6 +31,12 @@ export type PharmacistAssignment = {
   title: string;
   columns: PharmacistAssignmentColumn[];
   rows: PharmacistAssignmentRow[];
+};
+
+export type PharmacistAssignmentOptions = {
+  pharmacistNames?: string[];
+  fixedNames?: string[];
+  rotatingNames?: string[];
 };
 
 export const pharmacistAssignmentColumns: PharmacistAssignmentColumn[] = [
@@ -43,6 +50,31 @@ export const pharmacistAssignmentColumns: PharmacistAssignmentColumn[] = [
   { key: "afternoonA", label: "1:30-3:00" },
   { key: "afternoonB", label: "3:00-5:30" },
   { key: "duty", label: "담당업무" }
+];
+
+export const defaultFixedPharmacistNames = [
+  "김옥선",
+  "송은호",
+  "최윤영",
+  "김지혜",
+  "신진영",
+  "오아라",
+  "이정화",
+  "안혜정",
+  "김연지",
+  "이호연",
+  "박윤선"
+];
+
+const taskRotationKeys: PharmacistAssignmentColumnKey[] = [
+  "early",
+  "morningSupport",
+  "morningMain",
+  "lunchEarly",
+  "lunchLate",
+  "afternoonA",
+  "afternoonB",
+  "duty"
 ];
 
 const sourceRows: Array<{
@@ -354,6 +386,83 @@ const sourceRows: Array<{
   }
 ];
 
+function pharmacistBaseName(name: string) {
+  return name.split("/")[0].trim();
+}
+
+export const defaultPharmacistNameList = sourceRows
+  .filter((row) => (row.kind ?? "person") === "person")
+  .map((row) => row.values.name);
+
+export const defaultRotatingPharmacistNames = defaultPharmacistNameList.filter((name) => {
+  const baseName = pharmacistBaseName(name);
+  return !defaultFixedPharmacistNames.includes(baseName) && baseName !== "박현영";
+});
+
+function rotateRight<T>(items: T[], steps: number): T[] {
+  if (items.length === 0) return [];
+  const normalized = ((steps % items.length) + items.length) % items.length;
+  return [...items.slice(items.length - normalized), ...items.slice(0, items.length - normalized)];
+}
+
+function monthOffsetFrom2026(year: number, month: number) {
+  return (year - 2026) * 12 + (month - 1);
+}
+
+function taskPayload(values: Record<PharmacistAssignmentColumnKey, string>) {
+  return Object.fromEntries(taskRotationKeys.map((key) => [key, values[key]])) as Pick<
+    Record<PharmacistAssignmentColumnKey, string>,
+    (typeof taskRotationKeys)[number]
+  >;
+}
+
+function applyTaskPayload(
+  values: Record<PharmacistAssignmentColumnKey, string>,
+  payload: ReturnType<typeof taskPayload>
+) {
+  return {
+    ...values,
+    ...payload
+  };
+}
+
+function rotatePharmacistTaskValues(
+  rows: typeof sourceRows,
+  year: number,
+  month: number,
+  options: PharmacistAssignmentOptions = {}
+) {
+  const fixedNames = options.fixedNames?.length ? options.fixedNames : defaultFixedPharmacistNames;
+  const rotatingNames = options.rotatingNames?.length ? options.rotatingNames : defaultRotatingPharmacistNames;
+  const rotationTargets = rows.filter((row) => {
+    if ((row.kind ?? "person") !== "person") return false;
+    const baseName = pharmacistBaseName(row.values.name);
+    if (baseName === "박현영") return true;
+    return rotatingNames.includes(row.values.name) || (!fixedNames.includes(baseName) && rotatingNames.length === 0);
+  });
+  const rotatedPayloads = rotateRight(
+    rotationTargets.map((row) => taskPayload(row.values)),
+    monthOffsetFrom2026(year, month)
+  );
+  const payloadById = new Map(rotationTargets.map((row, index) => [row.id, rotatedPayloads[index]]));
+
+  return rows.map((row) => {
+    const payload = payloadById.get(row.id);
+    if (!payload) return row;
+    const nextValues = applyTaskPayload(row.values, payload);
+    if (pharmacistBaseName(row.values.name) === "박현영") {
+      nextValues.afternoonA = row.values.afternoonA;
+      nextValues.afternoonB = row.values.afternoonB;
+    }
+    nextValues.name = row.values.name;
+    nextValues.code = row.values.code;
+    return {
+      ...row,
+      values: nextValues
+    };
+  });
+}
+
 function isEditableCell(
   _rowKind: "person" | "note",
   _name: string,
@@ -374,19 +483,44 @@ function createCell(
   };
 }
 
-export function buildPharmacistAssignment(year: number, month: number): PharmacistAssignment {
+function applyPharmacistNameList(rows: typeof sourceRows, pharmacistNames: string[] = []) {
+  let personIndex = 0;
+  return rows.map((row) => {
+    if ((row.kind ?? "person") !== "person") return row;
+    const name = pharmacistNames[personIndex] || row.values.name;
+    personIndex += 1;
+    return {
+      ...row,
+      values: {
+        ...row.values,
+        name
+      }
+    };
+  });
+}
+
+export function buildPharmacistAssignment(
+  year: number,
+  month: number,
+  options: PharmacistAssignmentOptions = {}
+): PharmacistAssignment {
   const lastDay = new Date(year, month, 0).getDate();
   const title = `** ${String(month).padStart(2, "0")}월 01일 ~ ${String(month).padStart(2, "0")}월 ${String(lastDay).padStart(2, "0")}일 약제팀 업무분장 **`;
+  const rows = applyPharmacistNameList(
+    rotatePharmacistTaskValues(sourceRows, year, month, options),
+    options.pharmacistNames
+  );
 
   return {
     title,
     columns: pharmacistAssignmentColumns,
-    rows: sourceRows.map((row) => {
+    rows: rows.map((row) => {
       const kind = row.kind ?? "person";
       const name = row.values.name;
       return {
         id: row.id,
         kind,
+        merged: kind === "note",
         cells: Object.fromEntries(
           pharmacistAssignmentColumns.map((column) => [
             column.key,

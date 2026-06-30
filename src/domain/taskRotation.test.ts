@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  defaultStaffEarlyNames,
+  defaultStaffTimeNames,
   rotateStaffAssignments,
   staffAssignmentColumns,
   staffAssignmentTemplate
@@ -60,13 +62,32 @@ describe("staff task assignment rotation", () => {
     expect(rotated[1].helperName).toBe("지현");
   });
 
-  it("keeps staff lunch manual with a 12:30-13:30 default after rotation", () => {
-    const rotated = rotateStaffAssignments(staffAssignmentTemplate, 1);
+  it("exposes editable staff name lists in assignment order", () => {
+    expect(defaultStaffTimeNames).toEqual([
+      "박종연",
+      "송현우",
+      "강승원",
+      "박지숙",
+      "김동희",
+      "지현",
+      "예은",
+      "김서훈"
+    ]);
+    expect(defaultStaffEarlyNames).toEqual(["지현", "김동희", "지숙"]);
+  });
 
-    rotated.forEach((row) => {
-      expect(row.lunchEarly ?? "").toBe("");
-      expect(row.lunchLate).toBe("식사");
-      expect(row.lunchSlot).toBe("12:30-13:30");
+  it("uses editable lists for staff rotation and automatic lunch placement", () => {
+    const rotated = rotateStaffAssignments(staffAssignmentTemplate, 0, {
+      timeNames: ["김동희", "박종연", "송현우", "강승원", "박지숙", "지현", "예은", "김서훈"],
+      earlyNames: ["김동희", "지숙", "지현"]
     });
+
+    expect(rotated[0].primaryName).toBe("김동희");
+    expect(rotated[0].helperName).toBe("김동희");
+    expect(rotated[0].lunchEarly).toBe("식사");
+    expect(rotated[0].lunchLate).toBe("");
+    expect(rotated[1].lunchEarly ?? "").toBe("");
+    expect(rotated[1].lunchLate).toBe("식사");
+    expect(rotated[1].lunchSlot).toBe("12:30-13:30");
   });
 });

@@ -571,6 +571,24 @@ textarea {
   font-weight: 700;
 }
 
+.merged-note-cell input {
+  font-weight: 700;
+  text-align: center;
+}
+
+.assignment-list-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.pharmacist-list-panel {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
 .subtabs,
 .segmented {
   display: flex;

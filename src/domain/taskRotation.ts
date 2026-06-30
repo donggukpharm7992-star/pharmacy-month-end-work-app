@@ -36,6 +36,11 @@ export type StaffAssignmentColumn = {
   editable?: boolean;
 };
 
+export type StaffAssignmentRotationOptions = {
+  timeNames?: string[];
+  earlyNames?: string[];
+};
+
 export const staffAssignmentColumns: StaffAssignmentColumn[] = [
   { key: "task", label: "업무", editable: true },
   { key: "primaryName", label: "시 간", editable: true },
@@ -145,6 +150,12 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   }
 ];
 
+export const defaultStaffTimeNames = staffAssignmentTemplate.map((row) => row.primaryName);
+
+export const defaultStaffEarlyNames = staffAssignmentTemplate
+  .flatMap((row) => [row.helperName, row.secondHelperName])
+  .filter((name): name is string => Boolean(name));
+
 function rotateRight<T>(items: T[], steps: number): T[] {
   if (items.length === 0) return [];
   const normalized = ((steps % items.length) + items.length) % items.length;
@@ -153,10 +164,13 @@ function rotateRight<T>(items: T[], steps: number): T[] {
 
 export function rotateStaffAssignments(
   rows: StaffAssignmentRow[],
-  monthOffset: number
+  monthOffset: number,
+  options: StaffAssignmentRotationOptions = {}
 ): StaffAssignmentRow[] {
+  const baseTimeNames = options.timeNames?.length ? options.timeNames : rows.map((row) => row.primaryName);
+  const baseEarlyNames = options.earlyNames?.length ? options.earlyNames : undefined;
   const primaryNames = rotateRight(
-    rows.map((row) => row.primaryName),
+    baseTimeNames,
     monthOffset
   );
   const helperSlots = rows.flatMap((row, index) =>
@@ -168,7 +182,7 @@ export function rotateStaffAssignments(
       .map(([key, helperName]) => ({ index, key, helperName }))
   );
   const rotatedHelpers = rotateRight(
-    helperSlots.map((slot) => slot.helperName),
+    baseEarlyNames ?? helperSlots.map((slot) => slot.helperName),
     monthOffset
   );
 
@@ -179,15 +193,16 @@ export function rotateStaffAssignments(
     const secondHelperName = helperSlots.find((slot) => slot.index === index && slot.key === "secondHelperName")
       ? rotatedHelpers[helperSlots.findIndex((slot) => slot.index === index && slot.key === "secondHelperName")]
       : undefined;
-    const primaryName = primaryNames[index];
+    const primaryName = primaryNames[index] ?? row.primaryName;
+    const earlyLunch = (baseEarlyNames ?? helperSlots.map((slot) => slot.helperName)).includes(primaryName);
     return {
       ...row,
       primaryName,
       helperName,
       secondHelperName,
-      lunchEarly: "",
-      lunchLate: "식사",
-      lunchSlot: "12:30-13:30"
+      lunchEarly: earlyLunch ? "식사" : "",
+      lunchLate: earlyLunch ? "" : "식사",
+      lunchSlot: earlyLunch ? "11:45-12:30" : "12:30-13:30"
     };
   });
 }

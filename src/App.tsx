@@ -31,6 +31,8 @@ import {
   staffChecklistSections
 } from "./domain/documents";
 import {
+  defaultStaffEarlyNames,
+  defaultStaffTimeNames,
   rotateStaffAssignments,
   staffAssignmentColumns,
   StaffAssignmentColumnKey,
@@ -42,6 +44,9 @@ import {
 } from "./domain/assignmentViews";
 import {
   buildPharmacistAssignment,
+  defaultFixedPharmacistNames,
+  defaultPharmacistNameList,
+  defaultRotatingPharmacistNames,
   PharmacistAssignment,
   PharmacistAssignmentColumnKey
 } from "./domain/pharmacistAssignment";
@@ -55,6 +60,14 @@ type EditableLists = {
   nightStaffPositions: string[][];
   weekendStaff: string[];
   weekendPharmacists: string[];
+};
+
+type AssignmentNameLists = {
+  staffTimeNames: string[];
+  staffEarlyNames: string[];
+  pharmacistNames: string[];
+  fixedPharmacistNames: string[];
+  rotatingPharmacistNames: string[];
 };
 
 const eventLabels: Record<EventDateKey, string> = {
@@ -174,6 +187,16 @@ export default function App() {
     "pharmacy-app-staff-assignment-edits",
     {}
   );
+  const [assignmentNameLists, setAssignmentNameLists] = useLocalStorageState<AssignmentNameLists>(
+    "pharmacy-app-assignment-name-lists",
+    {
+      staffTimeNames: defaultStaffTimeNames,
+      staffEarlyNames: defaultStaffEarlyNames,
+      pharmacistNames: defaultPharmacistNameList,
+      fixedPharmacistNames: defaultFixedPharmacistNames,
+      rotatingPharmacistNames: defaultRotatingPharmacistNames
+    }
+  );
 
   const schedule = useMemo(
     () =>
@@ -191,11 +214,25 @@ export default function App() {
   const calendarCells = buildMonthDays(year, month, calendarEvents);
   const staffAssignments = rotateStaffAssignments(
     staffAssignmentTemplate,
-    Math.max(0, monthOffsetFrom2026(year, month))
+    Math.max(0, monthOffsetFrom2026(year, month)),
+    {
+      timeNames: assignmentNameLists.staffTimeNames,
+      earlyNames: assignmentNameLists.staffEarlyNames
+    }
   );
   const pharmacistAssignment = useMemo(
-    () => buildPharmacistAssignment(year, month),
-    [month, year]
+    () => buildPharmacistAssignment(year, month, {
+      pharmacistNames: assignmentNameLists.pharmacistNames,
+      fixedNames: assignmentNameLists.fixedPharmacistNames,
+      rotatingNames: assignmentNameLists.rotatingPharmacistNames
+    }),
+    [
+      assignmentNameLists.fixedPharmacistNames,
+      assignmentNameLists.pharmacistNames,
+      assignmentNameLists.rotatingPharmacistNames,
+      month,
+      year
+    ]
   );
 
   function moveMonth(direction: -1 | 1) {
@@ -281,6 +318,8 @@ export default function App() {
             pharmacistAssignment={pharmacistAssignment}
             pharmacistCellEdits={pharmacistCellEdits}
             setPharmacistCellEdits={setPharmacistCellEdits}
+            assignmentNameLists={assignmentNameLists}
+            setAssignmentNameLists={setAssignmentNameLists}
           />
         )}
 
@@ -490,7 +529,9 @@ function AssignmentTab({
   setStaffCellEdits,
   pharmacistAssignment,
   pharmacistCellEdits,
-  setPharmacistCellEdits
+  setPharmacistCellEdits,
+  assignmentNameLists,
+  setAssignmentNameLists
 }: {
   year: number;
   month: number;
@@ -500,6 +541,8 @@ function AssignmentTab({
   pharmacistAssignment: PharmacistAssignment;
   pharmacistCellEdits: Record<string, string>;
   setPharmacistCellEdits: (value: Record<string, string>) => void;
+  assignmentNameLists: AssignmentNameLists;
+  setAssignmentNameLists: (value: AssignmentNameLists) => void;
 }) {
   const [selectedView, setSelectedView] = useState<AssignmentViewId>("staff");
   const selectedPrintView =
@@ -619,6 +662,28 @@ function AssignmentTab({
               ))}
             </tbody>
           </table>
+          <div className="assignment-list-panel no-print">
+            <TextListEditor
+              title="시 간 이름 목록"
+              value={listToText(assignmentNameLists.staffTimeNames)}
+              onChange={(value) =>
+                setAssignmentNameLists({
+                  ...assignmentNameLists,
+                  staffTimeNames: textToList(value)
+                })
+              }
+            />
+            <TextListEditor
+              title="7:15~8:00 이름 목록"
+              value={listToText(assignmentNameLists.staffEarlyNames)}
+              onChange={(value) =>
+                setAssignmentNameLists({
+                  ...assignmentNameLists,
+                  staffEarlyNames: textToList(value)
+                })
+              }
+            />
+          </div>
         </div>
       )}
 
@@ -639,7 +704,20 @@ function AssignmentTab({
             <tbody>
               {pharmacistAssignment.rows.map((row) => (
                 <tr key={row.id} className={row.kind === "note" ? "note-row" : ""}>
-                  {pharmacistAssignment.columns.map((column) => {
+                  {row.merged ? (
+                    <td colSpan={pharmacistAssignment.columns.length} className="editable-cell merged-note-cell">
+                      <input
+                        className="cell-input"
+                        value={pharmacistCellEdits[pharmacistEditKey(row.id, "name")] ?? row.cells.name.value}
+                        onChange={(event) =>
+                          setPharmacistCellEdits({
+                            ...pharmacistCellEdits,
+                            [pharmacistEditKey(row.id, "name")]: event.currentTarget.value
+                          })
+                        }
+                      />
+                    </td>
+                  ) : pharmacistAssignment.columns.map((column) => {
                     const cell = row.cells[column.key];
                     const editKey = pharmacistEditKey(row.id, column.key);
                     const value = pharmacistCellEdits[editKey] ?? cell.value;
@@ -679,6 +757,38 @@ function AssignmentTab({
               ))}
             </tbody>
           </table>
+          <div className="assignment-list-panel no-print pharmacist-list-panel">
+            <TextListEditor
+              title="약사 이름 목록"
+              value={listToText(assignmentNameLists.pharmacistNames)}
+              onChange={(value) =>
+                setAssignmentNameLists({
+                  ...assignmentNameLists,
+                  pharmacistNames: textToList(value)
+                })
+              }
+            />
+            <TextListEditor
+              title="업무 고정 약사 그룹"
+              value={listToText(assignmentNameLists.fixedPharmacistNames)}
+              onChange={(value) =>
+                setAssignmentNameLists({
+                  ...assignmentNameLists,
+                  fixedPharmacistNames: textToList(value)
+                })
+              }
+            />
+            <TextListEditor
+              title="업무 순환 약사 그룹"
+              value={listToText(assignmentNameLists.rotatingPharmacistNames)}
+              onChange={(value) =>
+                setAssignmentNameLists({
+                  ...assignmentNameLists,
+                  rotatingPharmacistNames: textToList(value)
+                })
+              }
+            />
+          </div>
         </div>
       )}
     </section>
