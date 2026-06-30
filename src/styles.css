@@ -365,6 +365,17 @@ th {
   min-width: 132px;
 }
 
+.schedule-week-table td.two-names,
+.schedule-week-table td.three-names {
+  white-space: nowrap;
+}
+
+.schedule-week-table td.three-names {
+  font-size: 10px;
+  letter-spacing: 0;
+  padding-inline: 2px;
+}
+
 .date-row td {
   font-weight: 800;
 }
@@ -804,6 +815,18 @@ textarea {
   line-height: 1.15;
 }
 
+.monthly-checklist-table .checklist-weekday-cell {
+  height: 18px;
+  padding: 1px 2px;
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+.monthly-checklist-table .checklist-weekday-cell small {
+  font-size: 7px;
+  line-height: 1;
+}
+
 .checklist-item-cell {
   text-align: left;
   white-space: pre-line;
@@ -909,6 +932,16 @@ textarea {
     padding: 4px;
   }
 
+  .schedule-week-table td.two-names,
+  .schedule-week-table td.three-names {
+    white-space: nowrap;
+  }
+
+  .schedule-week-table td.three-names {
+    font-size: 7px;
+    padding-inline: 1px;
+  }
+
   .monthly-checklist-table {
     min-width: 0;
     width: 100%;
@@ -931,6 +964,18 @@ textarea {
   .monthly-checklist-table td:nth-child(3) {
     width: 26px;
     min-width: 26px;
+  }
+
+  .monthly-checklist-table .checklist-weekday-cell {
+    height: 12px;
+    padding: 0 1px;
+    font-size: 6px;
+    line-height: 1;
+  }
+
+  .monthly-checklist-table .checklist-weekday-cell small {
+    font-size: 5px;
+    line-height: 1;
   }
 
   .checklist-table-wrap {

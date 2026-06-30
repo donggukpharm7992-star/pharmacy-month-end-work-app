@@ -21,6 +21,7 @@ import {
   defaultWeekendPharmacists,
   defaultWeekendStaff,
   EventDateKey,
+  scheduleNameDensityClass,
   ScheduleEventDates
 } from "./domain/schedule";
 import {
@@ -450,10 +451,14 @@ function ScheduleTab({
                         : value && day?.weekday === 0
                           ? "red-day weekend-duty-cell"
                           : "";
+                      const cellClasses = [
+                        day == null ? "blank-day" : weekendClass,
+                        value ? scheduleNameDensityClass(value) : ""
+                      ].filter(Boolean).join(" ");
                       return (
                         <td
                           key={`${week.index}-${row.label}-${index}`}
-                          className={day == null ? "blank-day" : weekendClass}
+                          className={cellClasses}
                         >
                           {value}
                         </td>
@@ -1040,7 +1045,13 @@ function ChecklistsTab({
                       </tr>
                       <tr>
                         {monthDays.map((day) => (
-                          <th className={day.offDay ? "date-highlight" : ""} key={`${day.dateKey}-weekday`}>
+                          <th
+                            className={[
+                              "checklist-weekday-cell",
+                              day.offDay ? "date-highlight" : ""
+                            ].filter(Boolean).join(" ")}
+                            key={`${day.dateKey}-weekday`}
+                          >
                             {day.weekdayLabel}
                             {day.holidayName && <small>{day.holidayName}</small>}
                           </th>

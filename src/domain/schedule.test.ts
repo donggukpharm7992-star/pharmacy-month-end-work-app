@@ -5,7 +5,8 @@ import {
   buildMonthSchedule,
   buildNightPharmacistTurnEvents,
   buildScheduleWeeks,
-  rotateNightPharmacists
+  rotateNightPharmacists,
+  scheduleNameDensityClass
 } from "./schedule";
 
 describe("schedule rules", () => {
@@ -100,5 +101,11 @@ describe("schedule rules", () => {
 
     expect(weeks[0].days.map((day) => day?.day ?? null)).toEqual([null, 1, 2, 3, 4, 5, 6]);
     expect(weeks[1].days.map((day) => day?.day ?? null)).toEqual([7, 8, 9, 10, 11, 12, 13]);
+  });
+
+  it("classifies schedule cells by slash-separated name count", () => {
+    expect(scheduleNameDensityClass("고우리/신혜정/현경아")).toBe("three-names");
+    expect(scheduleNameDensityClass("윤주원/이상훈")).toBe("two-names");
+    expect(scheduleNameDensityClass("")).toBe("");
   });
 });

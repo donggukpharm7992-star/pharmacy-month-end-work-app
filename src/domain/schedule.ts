@@ -151,6 +151,17 @@ export function assignNightStaff(
     .filter(Boolean);
 }
 
+export function scheduleNameDensityClass(value: string): string {
+  const nameCount = value
+    .split("/")
+    .map((name) => name.trim())
+    .filter(Boolean).length;
+
+  if (nameCount >= 3) return "three-names";
+  if (nameCount === 2) return "two-names";
+  return "";
+}
+
 function buildEvents(eventDates: ScheduleEventDates = {}): CalendarEvent[] {
   return Object.entries(eventDates)
     .filter((entry): entry is [EventDateKey, string] => Boolean(entry[1]))
