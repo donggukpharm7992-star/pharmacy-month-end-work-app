@@ -933,6 +933,11 @@ textarea {
   break-after: page;
 }
 
+.global-document-print,
+.global-checklist-print {
+  display: none;
+}
+
 @media (max-width: 1120px) {
   .app {
     grid-template-columns: 1fr;
@@ -1012,6 +1017,50 @@ textarea {
     display: none !important;
   }
 
+  .printing-all-documents .workspace > *:not(.global-document-print),
+  .printing-all-checklists .workspace > *:not(.global-checklist-print) {
+    display: none !important;
+  }
+
+  .global-document-print,
+  .global-checklist-print {
+    display: block !important;
+  }
+
+  .global-checklist-page {
+    box-sizing: border-box;
+    min-height: 250mm;
+    padding: 8mm;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .global-checklist-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .global-checklist-page h3 {
+    margin: 0 0 5mm;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .document-data-table th,
+  .document-data-table td,
+  .notebook-source-table th,
+  .notebook-source-table td,
+  .monthly-checklist-table th,
+  .monthly-checklist-table td {
+    border: 1.5px solid #000;
+  }
+
+  .document-data-table th,
+  .notebook-source-table th,
+  .monthly-checklist-table th {
+    font-weight: 800;
+  }
+
   .print-document-sheet {
     break-after: page;
     page-break-after: always;
@@ -1028,6 +1077,33 @@ textarea {
     margin: 0 0 4mm;
     text-align: center;
     font-size: 14px;
+  }
+
+  .print-approval-box {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 46%;
+    margin: 0 0 3mm auto;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 800;
+    border: 1.5px solid #000;
+  }
+
+  .print-approval-box > div {
+    min-height: 8mm;
+    padding: 1.5mm 1mm;
+    border-right: 1.5px solid #000;
+    border-bottom: 1.5px solid #000;
+  }
+
+  .print-approval-box > div:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .print-approval-box .approval-signature {
+    min-height: 13mm;
+    border-bottom: 0;
   }
 
   .print-document-meta {

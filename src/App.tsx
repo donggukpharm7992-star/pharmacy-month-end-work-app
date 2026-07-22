@@ -161,6 +161,8 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(new Date(2026, 8, 1));
   const [printOrientation, setPrintOrientation] = useState<PrintOrientation>("landscape");
   const [printCalendar, setPrintCalendar] = useState(false);
+  const [printAllDocumentsMode, setPrintAllDocumentsMode] = useState<PrintOrientation | null>(null);
+  const [printAllChecklists, setPrintAllChecklists] = useState(false);
   const year = selectedDate.getFullYear();
   const month = selectedDate.getMonth() + 1;
 
@@ -253,14 +255,30 @@ export default function App() {
     printCurrent("landscape");
   }
 
+  function printAllDocuments(orientation: PrintOrientation) {
+    setPrintAllDocumentsMode(orientation);
+    setPrintOrientation(orientation);
+    window.setTimeout(() => window.print(), 50);
+  }
+
+  function printAllChecklistPages() {
+    setPrintAllChecklists(true);
+    setPrintOrientation("portrait");
+    window.setTimeout(() => window.print(), 50);
+  }
+
   useEffect(() => {
-    const finishPrinting = () => setPrintCalendar(false);
+    const finishPrinting = () => {
+      setPrintCalendar(false);
+      setPrintAllDocumentsMode(null);
+      setPrintAllChecklists(false);
+    };
     window.addEventListener("afterprint", finishPrinting);
     return () => window.removeEventListener("afterprint", finishPrinting);
   }, []);
 
   return (
-    <div className={`app print-${printOrientation} ${printCalendar ? "printing-calendar" : ""}`}>
+    <div className={`app print-${printOrientation} ${printCalendar ? "printing-calendar" : ""} ${printAllDocumentsMode ? "printing-all-documents" : ""} ${printAllChecklists ? "printing-all-checklists" : ""}`}>
       <aside className="sidebar no-print">
         <div className="brand">
           <img src={appIcon} alt="약제팀 업무 앱 아이콘" />
@@ -299,10 +317,13 @@ export default function App() {
             <button type="button" onClick={printCalendarOnly}>
               <Printer size={17} /> 월간 달력 출력
             </button>
-            <button type="button" onClick={() => printCurrent("landscape")}>
+            <button type="button" onClick={printAllChecklistPages}>
+              <Printer size={17} /> 체크리스트 전체 출력
+            </button>
+            <button type="button" onClick={() => printAllDocuments("landscape")}>
               <Printer size={17} /> 가로 출력
             </button>
-            <button type="button" onClick={() => printCurrent("portrait")}>
+            <button type="button" onClick={() => printAllDocuments("portrait")}>
               <Printer size={17} /> 세로 출력
             </button>
           </div>
@@ -344,6 +365,9 @@ export default function App() {
         {activeTab === "documents" && <DocumentsTab year={year} month={month} onPrint={printCurrent} />}
 
         {activeTab === "checklists" && <ChecklistsTab year={year} month={month} onPrint={printCurrent} />}
+
+        {printAllDocumentsMode && <GlobalDocumentPrint year={year} month={month} orientation={printAllDocumentsMode} />}
+        {printAllChecklists && <GlobalChecklistPrint year={year} month={month} />}
       </main>
     </div>
   );
@@ -1040,6 +1064,10 @@ function PrintDocumentSheet({
   const days = Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => index + 1);
   return (
     <section className={`print-document-sheet ${item.id}`}>
+      <div className="print-approval-box">
+        <div>담당자</div><div>파트장</div><div>팀장</div>
+        <div className="approval-signature"></div><div className="approval-signature"></div><div className="approval-signature"></div>
+      </div>
       <h3>{group.title} - {item.title}</h3>
       <div className="print-document-meta">
         <span>{year}년 {month}월</span>
@@ -1065,6 +1093,53 @@ function PrintDocumentSheet({
         </table>
       )}
     </section>
+  );
+}
+
+function GlobalDocumentPrint({
+  year,
+  month,
+  orientation
+}: {
+  year: number;
+  month: number;
+  orientation: PrintOrientation;
+}) {
+  return (
+    <div className="global-document-print">
+      {monthEndDocumentGroups
+        .filter((group) => group.orientation === orientation)
+        .flatMap((group) => group.printItems.map((item) => (
+          <PrintDocumentSheet key={item.id} year={year} month={month} group={group} item={item} />
+        )))}
+    </div>
+  );
+}
+
+function GlobalChecklistPrint({ year, month }: { year: number; month: number }) {
+  const monthDays = buildChecklistMonthDays(year, month);
+  return (
+    <div className="global-checklist-print">
+      {checklistPrintGroups.map((group) => (
+        <article className="global-checklist-page" key={group.title}>
+          <h3>{year}년 {month}월 {group.title}</h3>
+          {group.sections.map((section) => (
+            <table className="monthly-checklist-table" key={section}>
+              <thead><tr><th>번호</th><th>체크 항목</th><th>기준</th>{monthDays.map((day) => <th key={day.dateKey}>{day.day}</th>)}</tr></thead>
+              <tbody>{(staffChecklistSections[section] ?? []).map((item, index) => (
+                <tr key={item}><td>{index + 1}</td><td>{item}</td><td></td>{monthDays.map((day) => <td className="empty-write-cell" key={day.dateKey}></td>)}</tr>
+              ))}</tbody>
+            </table>
+          ))}
+        </article>
+      ))}
+      {notebookChecklistGroups.map((group) => (
+        <article className="global-checklist-page notebook-checklist-page" key={group.title}>
+          <h3>{year}년 {month}월 {group.title}</h3>
+          <NotebookSourceTable group={group} monthDays={monthDays} month={month} />
+        </article>
+      ))}
+    </div>
   );
 }
 
