@@ -985,7 +985,7 @@ textarea {
     break-after: page;
     page-break-after: always;
     box-sizing: border-box;
-    padding-inline: 8mm;
+    padding: 8mm;
   }
 
   .print-document-sheet:last-child {
@@ -1019,11 +1019,11 @@ textarea {
   }
 
   .print-landscape .print-document-sheet .document-data-table {
-    height: 160mm;
+    height: 145mm;
   }
 
   .print-portrait .print-document-sheet .document-data-table {
-    height: 230mm;
+    height: 210mm;
   }
 
   .document-data-table th,
@@ -1100,27 +1100,29 @@ textarea {
     padding: 4px 2px;
     font-size: 9px;
     line-height: 1.2;
-    height: 27px !important;
+    height: 34px !important;
     vertical-align: middle;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .medical-device-clean-room .equipment-document-table tr {
-    height: 27px;
+    height: 34px;
   }
 
   .medical-device-clean-room .equipment-document-table th:first-child,
   .medical-device-clean-room .equipment-document-table td:first-child {
-    width: 52px;
+    width: 70px;
   }
 
   .medical-device-clean-room .equipment-document-table th:nth-child(2),
   .medical-device-clean-room .equipment-document-table td:nth-child(2) {
-    width: 78px;
+    width: 150px;
   }
 
   .medical-device-clean-room .equipment-document-table th:last-child,
   .medical-device-clean-room .equipment-document-table td:last-child {
-    width: 30px;
+    width: 42px;
   }
 
   .medical-device-clean-room .equipment-document-table th:not(:first-child):not(:nth-child(2)):not(:last-child),
