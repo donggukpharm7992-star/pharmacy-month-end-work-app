@@ -218,7 +218,7 @@ const notebookChecklistColumnsWithPencil = [
   "충전"
 ];
 
-export const notebookChecklistGroups: PrintableGroup[] = Array.from({ length: 6 }, (_, index) => ({
+export const notebookChecklistGroups: PrintableGroup[] = Array.from({ length: 4 }, (_, index) => ({
   title: `${index + 1}번 노트북 체크리스트`,
   sections: [`${index + 1}번 노트북`],
   orientation: "portrait",

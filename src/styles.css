@@ -1174,6 +1174,41 @@ textarea {
     height: 17px;
   }
 
+  .compounding-powder .document-data-table,
+  .compounding-tablet .document-data-table,
+  .compounding-cleaning-log .document-data-table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .compounding-powder .document-data-table th:first-child,
+  .compounding-powder .document-data-table td:first-child,
+  .compounding-powder .document-data-table th:nth-child(2),
+  .compounding-powder .document-data-table td:nth-child(2),
+  .compounding-tablet .document-data-table th:first-child,
+  .compounding-tablet .document-data-table td:first-child,
+  .compounding-tablet .document-data-table th:nth-child(2),
+  .compounding-tablet .document-data-table td:nth-child(2),
+  .compounding-cleaning-log .document-data-table th:first-child,
+  .compounding-cleaning-log .document-data-table td:first-child,
+  .compounding-cleaning-log .document-data-table th:nth-child(2),
+  .compounding-cleaning-log .document-data-table td:nth-child(2) {
+    width: 32px;
+    min-width: 32px;
+    white-space: nowrap;
+  }
+
+  .compounding-powder .document-data-table th:nth-child(n + 3),
+  .compounding-powder .document-data-table td:nth-child(n + 3),
+  .compounding-tablet .document-data-table th:nth-child(n + 3),
+  .compounding-tablet .document-data-table td:nth-child(n + 3),
+  .compounding-cleaning-log .document-data-table th:nth-child(n + 3),
+  .compounding-cleaning-log .document-data-table td:nth-child(n + 3) {
+    width: auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
   .workspace {
     padding: 0;
   }
