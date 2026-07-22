@@ -96,7 +96,10 @@ function textToList(text: string) {
 function positionTextToList(text: string) {
   return text
     .split(/\r?\n/)
-    .map((line) => textToList(line))
+    .map((line) => line
+      .split("/")
+      .map((item) => item.trim())
+      .filter(Boolean))
     .filter((line) => line.length > 0);
 }
 
@@ -1064,16 +1067,13 @@ function PrintDocumentSheet({
   const days = Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => index + 1);
   return (
     <section className={`print-document-sheet ${item.id}`}>
+      <h3>{group.title} - {item.title}</h3>
       <div className="print-approval-box">
         <div>담당자</div><div>파트장</div><div>팀장</div>
         <div className="approval-signature"></div><div className="approval-signature"></div><div className="approval-signature"></div>
       </div>
-      <h3>{group.title} - {item.title}</h3>
       <div className="print-document-meta">
         <span>{year}년 {month}월</span>
-        <span>담당자: __________________</span>
-        <span>파트장: __________________</span>
-        <span>팀장: __________________</span>
       </div>
       {item.notes?.map((note) => <p className="print-document-note" key={note}>{note}</p>)}
       {item.equipment ? (
