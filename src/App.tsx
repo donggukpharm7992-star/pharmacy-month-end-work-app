@@ -9,7 +9,7 @@ import {
   Save,
   Users
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import appIcon from "./assets/app-icon.png";
 import palette from "./assets/palette.png";
 import { buildMonthDays, CalendarEvent, getHolidayName, isWeekend, toDateKey } from "./domain/calendar";
@@ -27,6 +27,8 @@ import {
 import {
   buildChecklistMonthDays,
   checklistPrintGroups,
+  MonthEndDocumentGroup,
+  MonthEndPrintItem,
   monthEndDocumentGroups,
   notebookChecklistGroups,
   staffChecklistSections
@@ -158,6 +160,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<MainTab>("schedule");
   const [selectedDate, setSelectedDate] = useState(new Date(2026, 8, 1));
   const [printOrientation, setPrintOrientation] = useState<PrintOrientation>("landscape");
+  const [printCalendar, setPrintCalendar] = useState(false);
   const year = selectedDate.getFullYear();
   const month = selectedDate.getMonth() + 1;
 
@@ -245,8 +248,19 @@ export default function App() {
     window.setTimeout(() => window.print(), 50);
   }
 
+  function printCalendarOnly() {
+    setPrintCalendar(true);
+    printCurrent("landscape");
+  }
+
+  useEffect(() => {
+    const finishPrinting = () => setPrintCalendar(false);
+    window.addEventListener("afterprint", finishPrinting);
+    return () => window.removeEventListener("afterprint", finishPrinting);
+  }, []);
+
   return (
-    <div className={`app print-${printOrientation}`}>
+    <div className={`app print-${printOrientation} ${printCalendar ? "printing-calendar" : ""}`}>
       <aside className="sidebar no-print">
         <div className="brand">
           <img src={appIcon} alt="약제팀 업무 앱 아이콘" />
@@ -282,6 +296,9 @@ export default function App() {
             </button>
           </div>
           <div className="top-actions">
+            <button type="button" onClick={printCalendarOnly}>
+              <Printer size={17} /> 월간 달력 출력
+            </button>
             <button type="button" onClick={() => printCurrent("landscape")}>
               <Printer size={17} /> 가로 출력
             </button>
@@ -291,7 +308,7 @@ export default function App() {
           </div>
         </header>
 
-        <section className="calendar-panel print-page">
+        <section className={`calendar-panel print-page ${printCalendar ? "print-calendar" : ""}`}>
           <div className="section-title">
             <h1>{year}년 {month}월 업무 달력</h1>
             <p>토요일, 일요일, 공휴일, 수기 입력 일정이 표시됩니다.</p>
@@ -811,7 +828,9 @@ function DocumentsTab({
 }) {
   const [selected, setSelected] = useState(monthEndDocumentGroups[0].title);
   const [selectedItemId, setSelectedItemId] = useState(monthEndDocumentGroups[0].printItems[0].id);
+  const [selectedPrintItemIds, setSelectedPrintItemIds] = useState<string[]>([monthEndDocumentGroups[0].printItems[0].id]);
   const [selectedEquipmentAssetNo, setSelectedEquipmentAssetNo] = useState("");
+  const [isPrinting, setIsPrinting] = useState(false);
   const group = monthEndDocumentGroups.find((item) => item.title === selected) ?? monthEndDocumentGroups[0];
   const selectedItem = group.printItems.find((item) => item.id === selectedItemId) ?? group.printItems[0];
   const days = Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => {
@@ -830,6 +849,7 @@ function DocumentsTab({
     const nextGroup = monthEndDocumentGroups.find((item) => item.title === nextGroupTitle) ?? monthEndDocumentGroups[0];
     setSelected(nextGroup.title);
     setSelectedItemId(nextGroup.printItems[0].id);
+    setSelectedPrintItemIds([nextGroup.printItems[0].id]);
     setSelectedEquipmentAssetNo("");
   }
 
@@ -837,6 +857,22 @@ function DocumentsTab({
     setSelectedItemId(nextItemId);
     setSelectedEquipmentAssetNo("");
   }
+
+  function togglePrintItem(itemId: string) {
+    setSelectedPrintItemIds((ids) => ids.includes(itemId) ? ids.filter((id) => id !== itemId) : [...ids, itemId]);
+  }
+
+  function printSelectedItems() {
+    if (selectedPrintItemIds.length === 0) return;
+    setIsPrinting(true);
+    window.setTimeout(() => onPrint(group.orientation), 50);
+  }
+
+  useEffect(() => {
+    const finishPrinting = () => setIsPrinting(false);
+    window.addEventListener("afterprint", finishPrinting);
+    return () => window.removeEventListener("afterprint", finishPrinting);
+  }, []);
 
   return (
     <section className="panel print-page">
@@ -863,7 +899,7 @@ function DocumentsTab({
             <h3>{year}년 {month}월 {selectedItem.title}</h3>
             <p>원본 파일: {group.sourceFile} / 시트: {selectedItem.sourceSheet}</p>
           </div>
-          <button type="button" className="no-print" onClick={() => onPrint(selectedItem.orientation)}>
+          <button type="button" className="no-print" onClick={printSelectedItems} disabled={selectedPrintItemIds.length === 0}>
             <Printer size={16} /> 선택 서류 출력
           </button>
         </div>
@@ -912,7 +948,7 @@ function DocumentsTab({
             </tbody>
           </table>
         ) : (
-          <table>
+          <table className="document-data-table">
             <thead>
               <tr>
                 <th>날짜</th>
@@ -942,17 +978,19 @@ function DocumentsTab({
         <div className="document-item-list no-print">
           <div>
             <h4>출력 항목 목록</h4>
+            <div className="document-print-actions">
+              <button type="button" onClick={() => setSelectedPrintItemIds(group.printItems.map((item) => item.id))}>전체 선택</button>
+              <button type="button" onClick={() => setSelectedPrintItemIds([])}>선택 해제</button>
+            </div>
             <div className="document-item-buttons">
               {group.printItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={item.id === selectedItem.id ? "selected" : ""}
-                  onClick={() => selectPrintItem(item.id)}
-                >
-                  <strong>{item.title}</strong>
-                  <span>{item.sourceSheet}</span>
-                </button>
+                <label key={item.id} className={item.id === selectedItem.id ? "selected" : ""}>
+                  <input type="checkbox" checked={selectedPrintItemIds.includes(item.id)} onChange={() => togglePrintItem(item.id)} />
+                  <button type="button" onClick={() => selectPrintItem(item.id)}>
+                    <strong>{item.title}</strong>
+                    <span>{item.sourceSheet}</span>
+                  </button>
+                </label>
               ))}
             </div>
           </div>
@@ -977,6 +1015,55 @@ function DocumentsTab({
           )}
         </div>
       </div>
+      {isPrinting && (
+        <div className="print-document-sheets">
+          {group.printItems
+            .filter((item) => selectedPrintItemIds.includes(item.id))
+            .map((item) => <PrintDocumentSheet key={item.id} year={year} month={month} group={group} item={item} />)}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PrintDocumentSheet({
+  year,
+  month,
+  group,
+  item
+}: {
+  year: number;
+  month: number;
+  group: MonthEndDocumentGroup;
+  item: MonthEndPrintItem;
+}) {
+  const days = Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => index + 1);
+  return (
+    <section className={`print-document-sheet ${item.id}`}>
+      <h3>{group.title} - {item.title}</h3>
+      <div className="print-document-meta">
+        <span>{year}년 {month}월</span>
+        <span>담당자: __________________</span>
+        <span>파트장: __________________</span>
+        <span>팀장: __________________</span>
+      </div>
+      {item.notes?.map((note) => <p className="print-document-note" key={note}>{note}</p>)}
+      {item.equipment ? (
+        <table className="equipment-document-table document-data-table">
+          <thead><tr><th>자산번호</th><th>장비명</th>{days.map((day) => <th key={day}>{day}</th>)}<th>점검자</th></tr></thead>
+          <tbody>{item.equipment.map((equipment) => (
+            <tr key={equipment.assetNo}><td>{equipment.assetNo}</td><td>{equipment.name}</td>{days.map((day) => <td className="empty-write-cell" key={day}></td>)}<td></td></tr>
+          ))}</tbody>
+        </table>
+      ) : (
+        <table className="document-data-table">
+          <thead><tr><th>일자</th><th>요일</th>{item.columns.map((field) => <th key={field}>{field}</th>)}</tr></thead>
+          <tbody>{days.map((day) => {
+            const date = new Date(year, month - 1, day);
+            return <tr key={day}><td>{day}일</td><td>{["일", "월", "화", "수", "목", "금", "토"][date.getDay()]}</td>{item.columns.map((field) => <td className="empty-write-cell" key={field}></td>)}</tr>;
+          })}</tbody>
+        </table>
+      )}
     </section>
   );
 }
@@ -992,6 +1079,8 @@ function ChecklistsTab({
 }) {
   const [selected, setSelected] = useState("staff");
   const [selectedNotebook, setSelectedNotebook] = useState("1");
+  const [selectedStaffPrintGroups, setSelectedStaffPrintGroups] = useState<string[]>(checklistPrintGroups.map((group) => group.title));
+  const [isPrintingStaff, setIsPrintingStaff] = useState(false);
   const monthDays = buildChecklistMonthDays(year, month);
   const notebookGroups =
     selectedNotebook === "all"
@@ -1002,6 +1091,22 @@ function ChecklistsTab({
     if (section === "PTP 업무" && item.includes("칼시오")) return "60포";
     return "";
   }
+
+  function toggleStaffPrintGroup(title: string) {
+    setSelectedStaffPrintGroups((titles) => titles.includes(title) ? titles.filter((item) => item !== title) : [...titles, title]);
+  }
+
+  function printSelectedStaffGroups() {
+    if (selectedStaffPrintGroups.length === 0) return;
+    setIsPrintingStaff(true);
+    window.setTimeout(() => onPrint("landscape"), 50);
+  }
+
+  useEffect(() => {
+    const finishPrinting = () => setIsPrintingStaff(false);
+    window.addEventListener("afterprint", finishPrinting);
+    return () => window.removeEventListener("afterprint", finishPrinting);
+  }, []);
 
   return (
     <section className="panel print-page">
@@ -1021,12 +1126,27 @@ function ChecklistsTab({
       </div>
 
       {selected === "staff" && (
-        <div className="checklist-pages">
+        <div className={`checklist-pages ${isPrintingStaff ? "printing-staff" : ""}`}>
+          <div className="staff-print-actions no-print">
+            <button type="button" onClick={() => setSelectedStaffPrintGroups(checklistPrintGroups.map((group) => group.title))}>전체 선택</button>
+            <button type="button" onClick={() => setSelectedStaffPrintGroups([])}>선택 해제</button>
+            <button type="button" onClick={printSelectedStaffGroups} disabled={selectedStaffPrintGroups.length === 0}>
+              <Printer size={16} /> 선택 항목 출력
+            </button>
+          </div>
           {checklistPrintGroups.map((group) => (
-            <article className={`checklist-page ${group.orientation}`} key={group.title}>
+            <article className={`checklist-page ${group.orientation} ${selectedStaffPrintGroups.includes(group.title) ? "staff-print-selected" : ""}`} key={group.title}>
               <div className="checklist-title">
                 <h3>{year}년 {month}월 {group.title}</h3>
-                <button type="button" className="no-print" onClick={() => onPrint("landscape")}>
+                <label className="staff-print-select no-print">
+                  <input type="checkbox" checked={selectedStaffPrintGroups.includes(group.title)} onChange={() => toggleStaffPrintGroup(group.title)} />
+                  선택
+                </label>
+                <button type="button" className="no-print" onClick={() => {
+                  setSelectedStaffPrintGroups([group.title]);
+                  setIsPrintingStaff(true);
+                  window.setTimeout(() => onPrint("landscape"), 50);
+                }}>
                   <Printer size={16} /> 이 장 출력
                 </button>
               </div>

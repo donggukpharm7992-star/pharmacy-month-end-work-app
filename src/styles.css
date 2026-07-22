@@ -664,6 +664,37 @@ textarea {
   gap: 8px;
 }
 
+.document-print-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.document-item-buttons label {
+  display: flex;
+  gap: 6px;
+  align-items: start;
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  padding: 8px;
+}
+
+.document-item-buttons label.selected {
+  border-color: var(--orange);
+  background: #fff3e7;
+}
+
+.document-item-buttons label input {
+  width: auto;
+  margin: 4px 0 0;
+}
+
+.document-item-buttons label button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
 .document-item-buttons {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
@@ -699,6 +730,12 @@ textarea {
 
 .equipment-document-table {
   table-layout: fixed;
+}
+
+.document-data-table th:nth-child(2),
+.document-data-table td:nth-child(2) {
+  width: 30px;
+  white-space: nowrap;
 }
 
 .equipment-document-table th:first-child,
@@ -755,6 +792,23 @@ textarea {
   display: grid;
   gap: 14px;
   padding: 14px;
+}
+
+.staff-print-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.staff-print-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.staff-print-select input {
+  width: auto;
 }
 
 .checklist-page {
@@ -816,10 +870,10 @@ textarea {
 }
 
 .monthly-checklist-table .checklist-weekday-cell {
-  height: 18px;
-  padding: 1px 2px;
+  height: 12px;
+  padding: 0 1px;
   font-size: 9px;
-  line-height: 1.1;
+  line-height: 1;
 }
 
 .monthly-checklist-table .checklist-weekday-cell small {
@@ -870,7 +924,7 @@ textarea {
 @media print {
   @page {
     size: A4 landscape;
-    margin: 8mm;
+    margin: 10mm;
   }
 
   .print-portrait {
@@ -883,12 +937,12 @@ textarea {
 
   @page portrait-page {
     size: A4 portrait;
-    margin: 8mm;
+    margin: 10mm;
   }
 
   @page landscape-page {
     size: A4 landscape;
-    margin: 8mm;
+    margin: 10mm;
   }
 
   body {
@@ -903,6 +957,159 @@ textarea {
   .sidebar,
   .topbar {
     display: none !important;
+  }
+
+  .section-title,
+  .subtabs,
+  .document-sheet {
+    display: none !important;
+  }
+
+  .calendar-panel {
+    display: none !important;
+  }
+
+  .calendar-panel.print-calendar {
+    display: block !important;
+  }
+
+  .printing-calendar .panel {
+    display: none !important;
+  }
+
+  .printing-staff .checklist-page:not(.staff-print-selected) {
+    display: none !important;
+  }
+
+  .print-document-sheet {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .print-document-sheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .print-document-sheet h3 {
+    margin: 0 0 4mm;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .print-document-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 6mm;
+    margin: 0 0 3mm;
+    font-size: 9px;
+  }
+
+  .print-document-note {
+    margin: 0 0 3mm;
+    font-size: 8px;
+  }
+
+  .document-data-table {
+    table-layout: fixed;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .document-data-table th,
+  .document-data-table td {
+    padding: 2px 1px;
+    font-size: 8px;
+    line-height: 1.1;
+    height: 13px;
+  }
+
+  .document-data-table th:nth-child(2),
+  .document-data-table td:nth-child(2) {
+    width: 24px;
+  }
+
+  .document-data-table .empty-write-cell {
+    height: 13px;
+  }
+
+  .refrigerator-ward-am .document-data-table th,
+  .refrigerator-ward-am .document-data-table td,
+  .refrigerator-ward-pm .document-data-table th,
+  .refrigerator-ward-pm .document-data-table td,
+  .refrigerator-prepare-am .document-data-table th,
+  .refrigerator-prepare-am .document-data-table td,
+  .refrigerator-prepare-pm .document-data-table th,
+  .refrigerator-prepare-pm .document-data-table td,
+  .refrigerator-temp-humidity .document-data-table th,
+  .refrigerator-temp-humidity .document-data-table td,
+  .refrigerator-outpatient .document-data-table th,
+  .refrigerator-outpatient .document-data-table td {
+    padding: 3px 2px;
+    font-size: 9px;
+    line-height: 1.2;
+    height: 17px;
+  }
+
+  .refrigerator-ward-am .document-data-table th:first-child,
+  .refrigerator-ward-am .document-data-table td:first-child,
+  .refrigerator-ward-pm .document-data-table th:first-child,
+  .refrigerator-ward-pm .document-data-table td:first-child,
+  .refrigerator-prepare-am .document-data-table th:first-child,
+  .refrigerator-prepare-am .document-data-table td:first-child,
+  .refrigerator-prepare-pm .document-data-table th:first-child,
+  .refrigerator-prepare-pm .document-data-table td:first-child,
+  .refrigerator-temp-humidity .document-data-table th:first-child,
+  .refrigerator-temp-humidity .document-data-table td:first-child,
+  .refrigerator-outpatient .document-data-table th:first-child,
+  .refrigerator-outpatient .document-data-table td:first-child {
+    width: 28px;
+  }
+
+  .medical-device-clean-room .equipment-document-table th,
+  .medical-device-clean-room .equipment-document-table td {
+    padding: 4px 2px;
+    font-size: 9px;
+    line-height: 1.2;
+    height: 27px !important;
+    vertical-align: middle;
+  }
+
+  .medical-device-clean-room .equipment-document-table tr {
+    height: 27px;
+  }
+
+  .medical-device-clean-room .equipment-document-table th:first-child,
+  .medical-device-clean-room .equipment-document-table td:first-child {
+    width: 52px;
+  }
+
+  .medical-device-clean-room .equipment-document-table th:nth-child(2),
+  .medical-device-clean-room .equipment-document-table td:nth-child(2) {
+    width: 78px;
+  }
+
+  .medical-device-clean-room .equipment-document-table th:last-child,
+  .medical-device-clean-room .equipment-document-table td:last-child {
+    width: 30px;
+  }
+
+  .medical-device-clean-room .equipment-document-table th:not(:first-child):not(:nth-child(2)):not(:last-child),
+  .medical-device-clean-room .equipment-document-table td:not(:first-child):not(:nth-child(2)):not(:last-child) {
+    width: auto;
+    padding: 2px 0;
+  }
+
+  .compounding-powder .document-data-table th,
+  .compounding-powder .document-data-table td,
+  .compounding-tablet .document-data-table th,
+  .compounding-tablet .document-data-table td,
+  .compounding-cleaning-log .document-data-table th,
+  .compounding-cleaning-log .document-data-table td {
+    padding: 3px 2px;
+    font-size: 8px;
+    line-height: 1.15;
+    height: 17px;
   }
 
   .workspace {

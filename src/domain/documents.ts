@@ -155,14 +155,37 @@ export const monthEndDocumentGroups: MonthEndDocumentGroup[] = [
         title: "산제",
         sourceSheet: "산제",
         orientation: "landscape",
-        columns: ["청소여부", "작동여부", "점검자"]
+        columns: [
+          "포장기(유야마·흰색)",
+          "포장기(유야마·유색)",
+          "콩콩이 산제기",
+          "분쇄기",
+          "산제조제대",
+          "진공청소기",
+          "포장기1",
+          "포장기2",
+          "포장기3",
+          "콩콩이 산제기(작동)",
+          "분쇄기 2대(작동)",
+          "점검자"
+        ]
       },
       {
         id: "compounding-tablet",
         title: "정제",
         sourceSheet: "정제",
         orientation: "landscape",
-        columns: ["정제포장기1", "정제계수기", "ATC1호기", "ATC2호기", "점검자"]
+        columns: [
+          "정제포장기1(청소)",
+          "정제계수기(청소)",
+          "ATC1호기(청소)",
+          "ATC2호기(청소)",
+          "정제포장기1(작동)",
+          "정제계수기(작동)",
+          "ATC1호기(작동)",
+          "ATC2호기(작동)",
+          "점검자"
+        ]
       },
       {
         id: "compounding-cleaning-log",
