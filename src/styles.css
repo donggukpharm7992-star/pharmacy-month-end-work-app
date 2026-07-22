@@ -984,6 +984,8 @@ textarea {
   .print-document-sheet {
     break-after: page;
     page-break-after: always;
+    box-sizing: border-box;
+    padding-inline: 8mm;
   }
 
   .print-document-sheet:last-child {
@@ -1014,6 +1016,14 @@ textarea {
     table-layout: fixed;
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .print-landscape .print-document-sheet .document-data-table {
+    height: 160mm;
+  }
+
+  .print-portrait .print-document-sheet .document-data-table {
+    height: 230mm;
   }
 
   .document-data-table th,
