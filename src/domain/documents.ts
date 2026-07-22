@@ -6,6 +6,7 @@ export type PrintableGroup = {
   title: string;
   sections: string[];
   orientation: PrintOrientation;
+  columns?: string[];
 };
 
 export type ChecklistMonthDay = {
@@ -204,10 +205,24 @@ export const checklistPrintGroups: PrintableGroup[] = [
   { title: "PTP 업무 + 주사 업무", sections: ["PTP 업무", "주사 업무"], orientation: "landscape" }
 ];
 
-export const notebookChecklistGroups: PrintableGroup[] = Array.from({ length: 4 }, (_, index) => ({
+const notebookBaseColumns = ["날짜", "요일", "사용 업무 및 사용 시간", "사용자1", "사용자2", "사용자3"];
+const notebookChecklistColumns = [
+  "노트북정돈 및 외관이상유무",
+  "어댑터 이상 유무",
+  "충전"
+];
+const notebookChecklistColumnsWithPencil = [
+  "노트북정돈 및 외관이상유무",
+  "노트북펜슬 정돈 및 이상 유무",
+  "어댑터 이상 유무",
+  "충전"
+];
+
+export const notebookChecklistGroups: PrintableGroup[] = Array.from({ length: 6 }, (_, index) => ({
   title: `${index + 1}번 노트북 체크리스트`,
   sections: [`${index + 1}번 노트북`],
-  orientation: "portrait"
+  orientation: "portrait",
+  columns: [...notebookBaseColumns, ...(index >= 4 ? notebookChecklistColumnsWithPencil : notebookChecklistColumns)]
 }));
 
 export const staffChecklistSections: Record<string, string[]> = {

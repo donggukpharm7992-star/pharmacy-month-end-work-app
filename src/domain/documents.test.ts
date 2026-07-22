@@ -53,8 +53,8 @@ describe("document and checklist grouping", () => {
     ]);
   });
 
-  it("creates four portrait notebook checklists", () => {
-    expect(notebookChecklistGroups).toHaveLength(4);
+  it("creates six portrait notebook checklists", () => {
+    expect(notebookChecklistGroups).toHaveLength(6);
     expect(notebookChecklistGroups[0]).toMatchObject({
       title: "1번 노트북 체크리스트",
       orientation: "portrait"

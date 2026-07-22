@@ -1068,6 +1068,36 @@ function PrintDocumentSheet({
   );
 }
 
+function NotebookSourceTable({
+  group,
+  monthDays,
+  month
+}: {
+  group: (typeof notebookChecklistGroups)[number];
+  monthDays: ReturnType<typeof buildChecklistMonthDays>;
+  month: number;
+}) {
+  const columns = group.columns ?? [];
+  return (
+    <table className="notebook-source-table">
+      <thead>
+        <tr>
+          {columns.map((column) => <th key={column}>{column}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {monthDays.map((day) => (
+          <tr className={day.offDay ? "date-highlight" : ""} key={day.dateKey}>
+            <td>{month}/{day.day}</td>
+            <td>{day.weekdayLabel}</td>
+            {columns.slice(2).map((column) => <td className="empty-write-cell" key={column}></td>)}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function ChecklistsTab({
   year,
   month,
@@ -1227,7 +1257,8 @@ function ChecklistsTab({
               <div className="checklist-title">
                 <h3>{year}년 {month}월 {group.title}</h3>
               </div>
-              <table className="notebook-month-table">
+              <NotebookSourceTable group={group} monthDays={monthDays} month={month} />
+              <table className="notebook-month-table legacy-notebook-month-table">
                 <thead>
                   <tr>
                     <th>날짜</th>

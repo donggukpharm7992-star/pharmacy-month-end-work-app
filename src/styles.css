@@ -898,6 +898,37 @@ textarea {
   height: 28px;
 }
 
+.legacy-notebook-month-table {
+  display: none;
+}
+
+.notebook-source-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.notebook-source-table th,
+.notebook-source-table td {
+  text-align: center;
+  padding: 5px 3px;
+  font-size: 11px;
+}
+
+.notebook-source-table th:nth-child(1),
+.notebook-source-table td:nth-child(1) {
+  width: 50px;
+}
+
+.notebook-source-table th:nth-child(2),
+.notebook-source-table td:nth-child(2) {
+  width: 36px;
+}
+
+.notebook-source-table th:nth-child(3),
+.notebook-source-table td:nth-child(3) {
+  width: 170px;
+}
+
 .notebook-checklist-page {
   break-after: page;
 }
@@ -1222,5 +1253,41 @@ textarea {
 
   .notebook-month-table {
     width: 100%;
+  }
+
+  .notebook-checklist-page {
+    box-sizing: border-box;
+    padding: 8mm;
+  }
+
+  .notebook-source-table {
+    height: 220mm;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .notebook-source-table th,
+  .notebook-source-table td {
+    padding: 4px 2px;
+    font-size: 9px;
+    line-height: 1.15;
+    height: 25px;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+  }
+
+  .notebook-source-table th:nth-child(1),
+  .notebook-source-table td:nth-child(1) {
+    width: 40px;
+  }
+
+  .notebook-source-table th:nth-child(2),
+  .notebook-source-table td:nth-child(2) {
+    width: 32px;
+  }
+
+  .notebook-source-table th:nth-child(3),
+  .notebook-source-table td:nth-child(3) {
+    width: 150px;
   }
 }
