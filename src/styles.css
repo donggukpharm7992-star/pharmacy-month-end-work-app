@@ -1048,7 +1048,7 @@ textarea {
     padding: 4px 2px;
     font-size: 10px;
     line-height: 1.2;
-    height: 25px !important;
+    height: 29px !important;
     vertical-align: middle;
   }
 
@@ -1058,7 +1058,16 @@ textarea {
   .refrigerator-prepare-pm .document-data-table tr,
   .refrigerator-temp-humidity .document-data-table tr,
   .refrigerator-outpatient .document-data-table tr {
-    height: 25px;
+    height: 29px;
+  }
+
+  .refrigerator-ward-am,
+  .refrigerator-ward-pm,
+  .refrigerator-prepare-am,
+  .refrigerator-prepare-pm,
+  .refrigerator-temp-humidity,
+  .refrigerator-outpatient {
+    padding-inline: 8mm;
   }
 
   .refrigerator-ward-am .document-data-table th:first-child,
