@@ -1045,10 +1045,20 @@ textarea {
   .refrigerator-temp-humidity .document-data-table td,
   .refrigerator-outpatient .document-data-table th,
   .refrigerator-outpatient .document-data-table td {
-    padding: 3px 2px;
-    font-size: 9px;
+    padding: 4px 2px;
+    font-size: 10px;
     line-height: 1.2;
-    height: 17px;
+    height: 25px !important;
+    vertical-align: middle;
+  }
+
+  .refrigerator-ward-am .document-data-table tr,
+  .refrigerator-ward-pm .document-data-table tr,
+  .refrigerator-prepare-am .document-data-table tr,
+  .refrigerator-prepare-pm .document-data-table tr,
+  .refrigerator-temp-humidity .document-data-table tr,
+  .refrigerator-outpatient .document-data-table tr {
+    height: 25px;
   }
 
   .refrigerator-ward-am .document-data-table th:first-child,
