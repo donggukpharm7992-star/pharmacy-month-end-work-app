@@ -91,6 +91,16 @@ const weekendPharmacistKimGyeongwonRemovalMigrationKey = "pharmacy-app-weekend-p
 const legacyStaffTimeNameOrder = ["박종연", "송현우", "강승원", "박지숙", "김동희", "지현", "예은", "김서훈"];
 const legacyStaffEarlyNameOrder = ["지현", "김동희", "지숙"];
 const staffAssignmentAugustRuleMigrationKey = "pharmacy-app-staff-assignment-august-2026-rule";
+const staffTaskDetailMigrationKey = "pharmacy-app-staff-task-detail-swap";
+const legacyStaffTaskCellValues: Record<string, string> = {
+  "3:inventoryTask": "냉장약/ 수액",
+  "4:deepCleanTask": "주사장 청소 / (앰플, 바이알 한달씩 / 번갈아 가며 하기)",
+  "4:inventoryTask": "주사",
+  "4:medicineRefillTask": "주사/수액",
+  "5:deepCleanTask": "PTP 약장 정리",
+  "5:inventoryTask": "PTP",
+  "5:medicineRefillTask": "PTP"
+};
 
 const eventLabels: Record<EventDateKey, string> = {
   expiryReview: "유효기간조사/휴가금지",
@@ -311,6 +321,20 @@ export default function App() {
     "pharmacy-app-staff-assignment-edits",
     {}
   );
+
+  useEffect(() => {
+    if (window.localStorage.getItem(staffTaskDetailMigrationKey) === "applied") return;
+
+    setStaffCellEdits((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([key, value]) => {
+          const suffix = key.split(":").slice(-2).join(":");
+          return legacyStaffTaskCellValues[suffix] !== value;
+        })
+      )
+    );
+    window.localStorage.setItem(staffTaskDetailMigrationKey, "applied");
+  }, [setStaffCellEdits]);
   const [assignmentNameLists, setAssignmentNameLists] = useLocalStorageState<AssignmentNameLists>(
     "pharmacy-app-assignment-name-lists",
     {
@@ -659,7 +683,7 @@ function ScheduleTab({
             <table className="schedule-week-table">
               <thead>
                 <tr>
-                  <th>근무시간</th>
+                  <th className="time-col">근무시간</th>
                   {weekdays.map((weekday) => (
                     <th key={weekday}>{weekday}</th>
                   ))}

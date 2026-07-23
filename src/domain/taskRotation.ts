@@ -99,7 +99,7 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
     lunchSlot: "11:45-12:30"
   },
   {
-    task: "주사",
+    task: "PTP반납1",
     primaryName: "김서훈",
     morningTask: "병동 정규불출 및 반납 받기 / 외래/퇴원챙기기, 외래 주사 챙기기",
     lunchEarly: "식사",
@@ -112,7 +112,7 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
     lunchSlot: "11:45-12:30"
   },
   {
-    task: "PTP반납1",
+    task: "주사",
     primaryName: "김동희",
     helperName: "김동희",
     morningTask: "병동약 반납업무 / PTP 약정리/외래/퇴원챙기기, 외래 주사 챙기기",
