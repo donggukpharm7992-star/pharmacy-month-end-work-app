@@ -43,6 +43,7 @@ import {
   defaultStaffEarlyNames,
   defaultStaffTimeNames,
   rotateStaffAssignments,
+  staffAssignmentMonthOffset,
   staffAssignmentColumns,
   StaffAssignmentColumnKey,
   staffAssignmentTemplate
@@ -85,6 +86,9 @@ const legacyNightPharmacistOrder = ["윤주원", "정순미", "송유희", "이�
 const nightPharmacistAugustRuleMigrationKey = "pharmacy-app-night-pharmacist-august-2026-rule";
 const legacyWeekendStaffOrder = ["김동희", "박종연", "김지은", "김지현", "강승원", "박지숙", "송현우", "김서훈"];
 const weekendStaffSeptemberRuleMigrationKey = "pharmacy-app-weekend-staff-september-2026-rule";
+const legacyStaffTimeNameOrder = ["박종연", "송현우", "강승원", "박지숙", "김동희", "지현", "예은", "김서훈"];
+const legacyStaffEarlyNameOrder = ["지현", "김동희", "지숙"];
+const staffAssignmentAugustRuleMigrationKey = "pharmacy-app-staff-assignment-august-2026-rule";
 
 const eventLabels: Record<EventDateKey, string> = {
   expiryReview: "유효기간조사/휴가금지",
@@ -134,10 +138,6 @@ function readLegacyEventDatesByMonth(): ScheduleEventDatesByMonth {
   } catch {
     return {};
   }
-}
-
-function monthOffsetFrom2026(year: number, month: number) {
-  return (year - 2026) * 12 + (month - 1);
 }
 
 function pharmacistEditKey(rowId: string, columnKey: PharmacistAssignmentColumnKey) {
@@ -292,6 +292,27 @@ export default function App() {
     }
   );
 
+  useEffect(() => {
+    if (window.localStorage.getItem(staffAssignmentAugustRuleMigrationKey) === "applied") return;
+
+    const usesLegacyTimeOrder =
+      assignmentNameLists.staffTimeNames.length === legacyStaffTimeNameOrder.length &&
+      assignmentNameLists.staffTimeNames.every((name, index) => name === legacyStaffTimeNameOrder[index]);
+    const usesLegacyEarlyOrder =
+      assignmentNameLists.staffEarlyNames.length === legacyStaffEarlyNameOrder.length &&
+      assignmentNameLists.staffEarlyNames.every((name, index) => name === legacyStaffEarlyNameOrder[index]);
+
+    if (usesLegacyTimeOrder || usesLegacyEarlyOrder) {
+      setAssignmentNameLists((current) => ({
+        ...current,
+        staffTimeNames: usesLegacyTimeOrder ? defaultStaffTimeNames : current.staffTimeNames,
+        staffEarlyNames: usesLegacyEarlyOrder ? defaultStaffEarlyNames : current.staffEarlyNames
+      }));
+    }
+
+    window.localStorage.setItem(staffAssignmentAugustRuleMigrationKey, "applied");
+  }, [assignmentNameLists.staffEarlyNames, assignmentNameLists.staffTimeNames, setAssignmentNameLists]);
+
   const schedule = useMemo(
     () =>
       buildMonthSchedule(year, month, {
@@ -309,7 +330,7 @@ export default function App() {
   const calendarCells = buildMonthDays(year, month, calendarEvents);
   const staffAssignments = rotateStaffAssignments(
     staffAssignmentTemplate,
-    Math.max(0, monthOffsetFrom2026(year, month)),
+    staffAssignmentMonthOffset(year, month),
     {
       timeNames: assignmentNameLists.staffTimeNames,
       earlyNames: assignmentNameLists.staffEarlyNames

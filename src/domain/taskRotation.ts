@@ -4,7 +4,6 @@ export type StaffAssignmentRow = {
   task: string;
   primaryName: string;
   helperName?: string;
-  secondHelperName?: string;
   morningTask: string;
   afternoonTask: string;
   lunchEarly?: string;
@@ -20,7 +19,6 @@ export type StaffAssignmentColumnKey =
   | "task"
   | "primaryName"
   | "helperName"
-  | "secondHelperName"
   | "morningTask"
   | "lunchEarly"
   | "lunchLate"
@@ -45,7 +43,6 @@ export const staffAssignmentColumns: StaffAssignmentColumn[] = [
   { key: "task", label: "업무", editable: true },
   { key: "primaryName", label: "시 간", editable: true },
   { key: "helperName", label: "7:15~8:00", editable: true },
-  { key: "secondHelperName", label: "", editable: true },
   { key: "morningTask", label: "8:00-11:30", editable: true },
   { key: "lunchEarly", label: "11:45-12:30", editable: true },
   { key: "lunchLate", label: "12:30-13:30", editable: true },
@@ -59,8 +56,8 @@ export const staffAssignmentColumns: StaffAssignmentColumn[] = [
 export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   {
     task: "추/긴",
-    primaryName: "박종연",
-    helperName: "지현",
+    primaryName: "송현우",
+    helperName: "박지숙",
     morningTask: "추가/긴급 접수 / 라벨붙이고 챙기기 / 검수된 약 병동 불출",
     lunchLate: "식사",
     afternoonTask: "추가/긴급/외래 약 챙기기 / 추긴 자리 봉투 채우기, 검수된 약 병동 불출",
@@ -69,8 +66,8 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   },
   {
     task: "외용",
-    primaryName: "송현우",
-    helperName: "김동희",
+    primaryName: "심관석",
+    helperName: "김지현",
     morningTask: "외용제채우기, 물약 챙기기 / 외래 주사 챙기기",
     lunchLate: "식사",
     afternoonTask: "반납약(외용) 정리 / 외래/퇴원챙기기, 외래 주사 챙기기",
@@ -82,7 +79,7 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   },
   {
     task: "ATC",
-    primaryName: "강승원",
+    primaryName: "김지은",
     morningTask: "ATC 정제 채우기/ STS깔기 / 외래약 올리기",
     lunchLate: "식사",
     afternoonTask: "ATC 정제 채우기/STS깔기",
@@ -104,7 +101,7 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   },
   {
     task: "주사",
-    primaryName: "김동희",
+    primaryName: "김서훈",
     morningTask: "병동 정규불출 및 반납 받기 / 외래/퇴원챙기기, 외래 주사 챙기기",
     lunchEarly: "식사",
     lunchLate: "",
@@ -117,8 +114,8 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   },
   {
     task: "PTP반납1",
-    primaryName: "지현",
-    helperName: "지숙",
+    primaryName: "김동희",
+    helperName: "김동희",
     morningTask: "병동약 반납업무 / PTP 약정리/외래/퇴원챙기기, 외래 주사 챙기기",
     lunchLate: "식사",
     afternoonTask: "Y키 넣기/경구약(병,PTP)장 정리 / PTP예제제 만들기 / 외래/퇴원챙기기, 외래 주사 챙기기",
@@ -129,7 +126,7 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   },
   {
     task: "PRN1",
-    primaryName: "예은",
+    primaryName: "김지현",
     morningTask: "신규직원교육, 오전 온도 체크 / 외래/퇴원 챙기기, 외래 주사 챙기기 / *바쁜 포지션 백업 업무* / *휴가자 있을 시 휴가자 포지션*",
     lunchEarly: "식사",
     lunchLate: "",
@@ -141,7 +138,7 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   },
   {
     task: "PRN2/반납",
-    primaryName: "김서훈",
+    primaryName: "박종연",
     morningTask: "외래/퇴원 챙기기, 외래 주사 챙기기 / *바쁜 포지션 백업 업무* / 반납업무",
     lunchLate: "식사",
     afternoonTask: "외래/퇴원 챙기기, 외래 주사 챙기기 / *바쁜 포지션 백업 업무* / *휴가자 있을 시 휴가자 포지션*",
@@ -153,8 +150,12 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
 export const defaultStaffTimeNames = staffAssignmentTemplate.map((row) => row.primaryName);
 
 export const defaultStaffEarlyNames = staffAssignmentTemplate
-  .flatMap((row) => [row.helperName, row.secondHelperName])
+  .map((row) => row.helperName)
   .filter((name): name is string => Boolean(name));
+
+export function staffAssignmentMonthOffset(year: number, month: number): number {
+  return Math.max(0, (year - 2026) * 12 + (month - 8));
+}
 
 function rotateRight<T>(items: T[], steps: number): T[] {
   if (items.length === 0) return [];
@@ -173,25 +174,17 @@ export function rotateStaffAssignments(
     baseTimeNames,
     monthOffset
   );
-  const helperSlots = rows.flatMap((row, index) =>
-    ([
-      ["helperName", row.helperName],
-      ["secondHelperName", row.secondHelperName]
-    ] as const)
-      .filter((slot): slot is ["helperName" | "secondHelperName", string] => Boolean(slot[1]))
-      .map(([key, helperName]) => ({ index, key, helperName }))
-  );
+  const helperSlots = rows
+    .map((row, index) => ({ index, helperName: row.helperName }))
+    .filter((slot): slot is { index: number; helperName: string } => Boolean(slot.helperName));
   const rotatedHelpers = rotateRight(
     baseEarlyNames ?? helperSlots.map((slot) => slot.helperName),
     monthOffset
   );
 
   return rows.map((row, index) => {
-    const helperName = helperSlots.find((slot) => slot.index === index && slot.key === "helperName")
-      ? rotatedHelpers[helperSlots.findIndex((slot) => slot.index === index && slot.key === "helperName")]
-      : undefined;
-    const secondHelperName = helperSlots.find((slot) => slot.index === index && slot.key === "secondHelperName")
-      ? rotatedHelpers[helperSlots.findIndex((slot) => slot.index === index && slot.key === "secondHelperName")]
+    const helperName = helperSlots.find((slot) => slot.index === index)
+      ? rotatedHelpers[helperSlots.findIndex((slot) => slot.index === index)]
       : undefined;
     const primaryName = primaryNames[index] ?? row.primaryName;
     const earlyLunch = (baseEarlyNames ?? helperSlots.map((slot) => slot.helperName)).includes(primaryName);
@@ -199,7 +192,6 @@ export function rotateStaffAssignments(
       ...row,
       primaryName,
       helperName,
-      secondHelperName,
       lunchEarly: earlyLunch ? "식사" : "",
       lunchLate: earlyLunch ? "" : "식사",
       lunchSlot: earlyLunch ? "11:45-12:30" : "12:30-13:30"

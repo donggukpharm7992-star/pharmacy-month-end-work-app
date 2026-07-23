@@ -3,6 +3,7 @@ import {
   defaultStaffEarlyNames,
   defaultStaffTimeNames,
   rotateStaffAssignments,
+  staffAssignmentMonthOffset,
   staffAssignmentColumns,
   staffAssignmentTemplate
 } from "./taskRotation";
@@ -13,7 +14,6 @@ describe("staff task assignment rotation", () => {
       "업무",
       "시 간",
       "7:15~8:00",
-      "",
       "8:00-11:30",
       "11:45-12:30",
       "12:30-13:30",
@@ -40,54 +40,75 @@ describe("staff task assignment rotation", () => {
     expect(prn?.afternoonTask).toContain("신규직원교육, 오후 온도 체크");
   });
 
-  it("rotates B-column names by moving the bottom name to the top each month", () => {
+  it("uses August as the base month and moves each name down one task in September", () => {
+    const august = rotateStaffAssignments(staffAssignmentTemplate, 0);
     const rotated = rotateStaffAssignments(staffAssignmentTemplate, 1);
 
+    expect(august[0].primaryName).toBe("송현우");
+    expect(august[1].primaryName).toBe("심관석");
     expect(rotated.map((row) => row.primaryName)).toEqual([
-      "김서훈",
       "박종연",
       "송현우",
-      "강승원",
+      "심관석",
+      "김지은",
       "박지숙",
+      "김서훈",
       "김동희",
-      "지현",
-      "예은"
+      "김지현"
     ]);
   });
 
-  it("rotates white-cell helper names independently", () => {
+  it("rotates the three early-duty names across emergency, topical, and PTP return tasks", () => {
+    const august = rotateStaffAssignments(staffAssignmentTemplate, 0);
     const rotated = rotateStaffAssignments(staffAssignmentTemplate, 1);
 
-    expect(rotated[0].helperName).toBe("지숙");
-    expect(rotated[1].helperName).toBe("지현");
+    expect([august[0].helperName, august[1].helperName, august[5].helperName]).toEqual([
+      "박지숙",
+      "김지현",
+      "김동희"
+    ]);
+    expect([rotated[0].helperName, rotated[1].helperName, rotated[5].helperName]).toEqual([
+      "김동희",
+      "박지숙",
+      "김지현"
+    ]);
   });
 
   it("exposes editable staff name lists in assignment order", () => {
     expect(defaultStaffTimeNames).toEqual([
-      "박종연",
       "송현우",
-      "강승원",
+      "심관석",
+      "김지은",
       "박지숙",
+      "김서훈",
       "김동희",
-      "지현",
-      "예은",
-      "김서훈"
+      "김지현",
+      "박종연"
     ]);
-    expect(defaultStaffEarlyNames).toEqual(["지현", "김동희", "지숙"]);
+    expect(defaultStaffEarlyNames).toEqual(["박지숙", "김지현", "김동희"]);
   });
 
   it("uses editable lists for staff rotation and automatic lunch placement", () => {
-    const rotated = rotateStaffAssignments(staffAssignmentTemplate, 0, {
-      timeNames: ["김동희", "박종연", "송현우", "강승원", "박지숙", "지현", "예은", "김서훈"],
-      earlyNames: ["김동희", "지숙", "지현"]
+    const rotated = rotateStaffAssignments(staffAssignmentTemplate, 1, {
+      timeNames: ["직원1", "직원2", "직원3", "직원4", "직원5", "직원6", "직원7", "직원8"],
+      earlyNames: ["직원3", "직원6", "직원8"]
     });
 
-    expect(rotated[0].primaryName).toBe("김동희");
-    expect(rotated[0].helperName).toBe("김동희");
+    expect(rotated[0].primaryName).toBe("직원8");
+    expect(rotated[1].primaryName).toBe("직원1");
+    expect(rotated[0].helperName).toBe("직원8");
+    expect(rotated[1].helperName).toBe("직원3");
+    expect(rotated[5].helperName).toBe("직원6");
     expect(rotated[0].lunchEarly).toBe("식사");
     expect(rotated[0].lunchLate).toBe("");
     expect(rotated[1].lunchEarly ?? "").toBe("");
     expect(rotated[1].lunchLate).toBe("식사");
     expect(rotated[1].lunchSlot).toBe("12:30-13:30");
+  });
+
+  it("counts staff assignment months from August 2026", () => {
+    expect(staffAssignmentMonthOffset(2026, 8)).toBe(0);
+    expect(staffAssignmentMonthOffset(2026, 9)).toBe(1);
+    expect(staffAssignmentMonthOffset(2027, 8)).toBe(12);
   });
 });
