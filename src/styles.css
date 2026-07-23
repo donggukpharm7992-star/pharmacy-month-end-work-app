@@ -1121,7 +1121,7 @@ textarea {
   }
 
   .document-data-table th {
-    white-space: normal;
+    white-space: pre-line;
     overflow-wrap: anywhere;
     font-size: 9px;
     line-height: 1.2;

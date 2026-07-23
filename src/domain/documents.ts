@@ -212,8 +212,8 @@ for (const item of refrigeratorGroup.printItems.filter((item) => item.id === "re
     "외용제",
     "외용제냉동실",
     "불출장",
-    "제제실(냉장)",
-    "제제실(냉동)",
+    "제제실\n(냉장)",
+    "제제실\n(냉동)",
     "적합/부적합",
     "점검자"
   ];
