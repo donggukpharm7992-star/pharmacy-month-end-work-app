@@ -1131,7 +1131,8 @@ textarea {
   .global-checklist-page h3 {
     margin: 0 0 5mm;
     text-align: center;
-    font-size: 14px;
+    font-size: 17px;
+    font-weight: 800;
   }
 
   .global-checklist-page .monthly-checklist-table + .monthly-checklist-table,
@@ -1251,7 +1252,9 @@ textarea {
     justify-content: space-between;
     gap: 6mm;
     margin: 0 0 3mm;
-    font-size: 9px;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
   }
 
   .print-document-note {
