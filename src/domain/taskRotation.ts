@@ -96,7 +96,6 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
     lunchLate: "",
     afternoonTask: "산제분포 / 외래/퇴원챙기기, 외래 주사 챙기기/ 산제실 청소",
     deepCleanTask: "산제실 청소 / (필터교체) / 불출장",
-    inventoryTask: "냉장약/ 수액",
     lunchSlot: "11:45-12:30"
   },
   {
@@ -107,9 +106,9 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
     lunchLate: "",
     afternoonTask: "반납약 업무 및 주사/수액 채우기 / 외래/퇴원챙기기, 외래 주사 챙기기",
     eveningTask: "장비점검일지",
-    deepCleanTask: "주사장 청소 / (앰플, 바이알 한달씩 / 번갈아 가며 하기)",
-    inventoryTask: "주사",
-    medicineRefillTask: "주사/수액",
+    deepCleanTask: "PTP 약장 정리",
+    inventoryTask: "PTP",
+    medicineRefillTask: "PTP",
     lunchSlot: "11:45-12:30"
   },
   {
@@ -119,9 +118,9 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
     morningTask: "병동약 반납업무 / PTP 약정리/외래/퇴원챙기기, 외래 주사 챙기기",
     lunchLate: "식사",
     afternoonTask: "Y키 넣기/경구약(병,PTP)장 정리 / PTP예제제 만들기 / 외래/퇴원챙기기, 외래 주사 챙기기",
-    deepCleanTask: "PTP 약장 정리",
-    inventoryTask: "PTP",
-    medicineRefillTask: "PTP",
+    deepCleanTask: "주사장 청소 / (앰플, 바이알 한달씩 / 번갈아 가며 하기)",
+    inventoryTask: "주사",
+    medicineRefillTask: "주사/수액",
     lunchSlot: "11:45-12:30"
   },
   {

@@ -40,6 +40,24 @@ describe("staff task assignment rotation", () => {
     expect(prn?.afternoonTask).toContain("신규직원교육, 오후 온도 체크");
   });
 
+  it("removes powder inventory text and swaps injection and PTP cleaning duties", () => {
+    const powder = staffAssignmentTemplate.find((row) => row.task === "산제");
+    const injection = staffAssignmentTemplate.find((row) => row.task === "주사");
+    const ptpReturn = staffAssignmentTemplate.find((row) => row.task === "PTP반납1");
+
+    expect(powder?.inventoryTask ?? "").toBe("");
+    expect(injection).toMatchObject({
+      deepCleanTask: "PTP 약장 정리",
+      inventoryTask: "PTP",
+      medicineRefillTask: "PTP"
+    });
+    expect(ptpReturn).toMatchObject({
+      deepCleanTask: "주사장 청소 / (앰플, 바이알 한달씩 / 번갈아 가며 하기)",
+      inventoryTask: "주사",
+      medicineRefillTask: "주사/수액"
+    });
+  });
+
   it("uses August as the base month and moves each name down one task in September", () => {
     const august = rotateStaffAssignments(staffAssignmentTemplate, 0);
     const rotated = rotateStaffAssignments(staffAssignmentTemplate, 1);
