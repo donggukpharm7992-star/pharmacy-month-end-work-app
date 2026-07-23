@@ -149,6 +149,29 @@ describe("schedule rules", () => {
     expect(schedule.days.find((day) => day.dateKey === "2026-09-24")?.lowerMorningStaff).toEqual(["직원7"]);
   });
 
+  it("fixes the first Saturday pharmacist pair and rotates the remaining weekend slot", () => {
+    const names = ["약사1", "약사2", "약사3", "약사4", "약사5"];
+    const september = buildMonthSchedule(2026, 9, { weekendPharmacists: names });
+    const december = buildMonthSchedule(2026, 12, { weekendPharmacists: names });
+
+    expect(september.days.find((day) => day.dateKey === "2026-09-05")?.dayPharmacists).toEqual([
+      "최윤영",
+      "이승현"
+    ]);
+    expect(september.days.find((day) => day.dateKey === "2026-09-06")?.dayPharmacists).toEqual([
+      "서윤석",
+      "약사1"
+    ]);
+    expect(september.days.find((day) => day.dateKey === "2026-09-12")?.dayPharmacists).toEqual([
+      "약사2",
+      "이승현"
+    ]);
+    expect(december.days.find((day) => day.dateKey === "2026-12-06")?.dayPharmacists).toEqual([
+      "약사1",
+      "서윤석"
+    ]);
+  });
+
   it("builds the selected month schedule with event dates surfaced beside the table", () => {
     const schedule = buildMonthSchedule(2026, 9, {
       eventDates: {

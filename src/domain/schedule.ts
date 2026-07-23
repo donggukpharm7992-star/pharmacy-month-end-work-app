@@ -323,16 +323,32 @@ function dayPharmacistNames(
   dateKey: string,
   weekday: number,
   holiday: boolean,
+  year: number,
   month: number,
   names: string[]
 ): string[] {
   if (weekday !== 6 && weekday !== 0 && !holiday) return [];
-  const monthShift = month % 2;
-  const index = Math.abs(diffDays(dateKey, "2026-01-01")) + monthShift;
-  if (holiday) return takeCycled(names, index, 2);
-  if (weekday === 6) return [names[index % names.length], "이승현"];
+  const targetDay = dateKeyToDate(dateKey).getDate();
+  let rotationSlots = 0;
+
+  for (let day = 1; day < targetDay; day += 1) {
+    const currentDateKey = toDateKey(year, month, day);
+    const currentWeekday = dateKeyToDate(currentDateKey).getDay();
+    if (isHoliday(currentDateKey)) {
+      rotationSlots += 2;
+    } else if (currentWeekday === 0) {
+      rotationSlots += 1;
+    } else if (currentWeekday === 6 && day > 7) {
+      rotationSlots += 1;
+    }
+  }
+
+  if (holiday) return takeCycled(names, rotationSlots, 2);
+  if (weekday === 6 && targetDay <= 7) return ["최윤영", "이승현"];
+  if (weekday === 6) return [...takeCycled(names, rotationSlots, 1), "이승현"];
   const fixedFirst = month % 2 === 1;
-  const rotating = names[index % names.length];
+  const rotating = takeCycled(names, rotationSlots, 1)[0];
+  if (!rotating) return ["서윤석"];
   return fixedFirst ? ["서윤석", rotating] : [rotating, "서윤석"];
 }
 
@@ -408,7 +424,7 @@ export function buildMonthSchedule(
       nightStaff: assignNightStaff(dateKey, nightStaffPositions),
       morningStaff,
       lowerMorningStaff,
-      dayPharmacists: dayPharmacistNames(dateKey, weekday, holiday, month, weekendPharmacists),
+      dayPharmacists: dayPharmacistNames(dateKey, weekday, holiday, year, month, weekendPharmacists),
       upperMorningPharmacists: upperMorningPharmacists(dateKey, weekday, weekendPharmacists),
       notes: []
     };

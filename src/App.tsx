@@ -5,17 +5,20 @@ import {
   ChevronRight,
   ClipboardList,
   FileText,
+  Plus,
   Printer,
   Save,
+  Trash2,
   Users
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import appIcon from "./assets/app-icon.png";
 import palette from "./assets/palette.png";
-import { buildMonthDays, CalendarEvent, getHolidayName, isWeekend, toDateKey } from "./domain/calendar";
+import { buildMonthDays, CalendarEvent, dateKeyToDate, getHolidayName, isWeekend, toDateKey } from "./domain/calendar";
 import {
   buildDefaultScheduleEventDates,
   buildMonthSchedule,
+  buildNightPharmacistTurnEvents,
   buildScheduleWeeks,
   DEFAULT_NIGHT_PHARMACIST_TURN_DATE,
   defaultNightPharmacists,
@@ -141,6 +144,10 @@ function pharmacistEditKey(rowId: string, columnKey: PharmacistAssignmentColumnK
   return `${rowId}:${columnKey}`;
 }
 
+function scheduleCellEditKey(dateKey: string, rowId: string) {
+  return `${dateKey}:${rowId}`;
+}
+
 function staffAssignmentEditKey(
   year: number,
   month: number,
@@ -229,6 +236,10 @@ export default function App() {
   const [scheduleSubtitle, setScheduleSubtitle] = useLocalStorageState(
     "pharmacy-app-schedule-subtitle",
     "휴가자 연차 2명"
+  );
+  const [scheduleCellEdits, setScheduleCellEdits] = useLocalStorageState<Record<string, string>>(
+    "pharmacy-app-schedule-cell-edits",
+    {}
   );
 
   useEffect(() => {
@@ -424,8 +435,11 @@ export default function App() {
             setEventDates={setEventDates}
             scheduleSubtitle={scheduleSubtitle}
             setScheduleSubtitle={setScheduleSubtitle}
+            scheduleCellEdits={scheduleCellEdits}
+            setScheduleCellEdits={setScheduleCellEdits}
             nightPharmacistTurnDate={nightPharmacistTurnDate}
             setNightPharmacistTurnDate={setNightPharmacistTurnDate}
+            onPrint={() => printCurrent("landscape")}
           />
         )}
 
@@ -510,8 +524,11 @@ function ScheduleTab({
   setEventDates,
   scheduleSubtitle,
   setScheduleSubtitle,
+  scheduleCellEdits,
+  setScheduleCellEdits,
   nightPharmacistTurnDate,
-  setNightPharmacistTurnDate
+  setNightPharmacistTurnDate,
+  onPrint
 }: {
   schedule: ReturnType<typeof buildMonthSchedule>;
   lists: EditableLists;
@@ -520,24 +537,47 @@ function ScheduleTab({
   setEventDates: (value: ScheduleEventDates) => void;
   scheduleSubtitle: string;
   setScheduleSubtitle: (value: string) => void;
+  scheduleCellEdits: Record<string, string>;
+  setScheduleCellEdits: (value: Record<string, string>) => void;
   nightPharmacistTurnDate: string;
   setNightPharmacistTurnDate: (value: string) => void;
+  onPrint: () => void;
 }) {
   const [showLists, setShowLists] = useState(true);
   const weeks = buildScheduleWeeks(schedule);
   const weekdays = ["월", "화", "수", "목", "금", "토", "일"];
   const rows = [
-    { label: "17:00-익일08:00", get: (day: (typeof schedule.days)[number]) => day.nightPharmacists.join("/") },
-    { label: "20:00-익일07:00", get: (day: (typeof schedule.days)[number]) => day.nightStaff.join("/") },
-    { label: "나이트 업무 구분", get: () => "" },
-    { label: "07:15-11:15", get: (day: (typeof schedule.days)[number]) => day.morningStaff.join("/") },
-    { label: "08:00-17:00", get: (day: (typeof schedule.days)[number]) => day.dayPharmacists.join("/") },
-    { label: "08:00-12:00 약사", get: (day: (typeof schedule.days)[number]) => day.upperMorningPharmacists.join("/") },
-    { label: "08:00-12:00 직원", get: (day: (typeof schedule.days)[number]) => day.lowerMorningStaff.join("/") }
+    { id: "nightPharmacists", label: "17:00-익일08:00", get: (day: (typeof schedule.days)[number]) => day.nightPharmacists.join("/") },
+    { id: "nightStaff", label: "20:00-익일07:00", get: (day: (typeof schedule.days)[number]) => day.nightStaff.join("/") },
+    { id: "nightCategory", label: "나이트 업무 구분", get: () => "" },
+    { id: "morningStaff", label: "07:15-11:15", get: (day: (typeof schedule.days)[number]) => day.morningStaff.join("/") },
+    { id: "dayPharmacists", label: "08:00-17:00", get: (day: (typeof schedule.days)[number]) => day.dayPharmacists.join("/") },
+    { id: "upperMorningPharmacists", label: "08:00-12:00 약사", get: (day: (typeof schedule.days)[number]) => day.upperMorningPharmacists.join("/") },
+    { id: "lowerMorningStaff", label: "08:00-12:00 직원", get: (day: (typeof schedule.days)[number]) => day.lowerMorningStaff.join("/") }
   ];
+  const currentMonthTurnDate =
+    buildNightPharmacistTurnEvents(schedule.year, schedule.month, nightPharmacistTurnDate)[0]?.date ?? "";
+
+  function changeCurrentMonthTurnDate(nextDate: string) {
+    if (!nextDate) return;
+    if (!currentMonthTurnDate) {
+      setNightPharmacistTurnDate(nextDate);
+      return;
+    }
+
+    const shiftDays = Math.round(
+      (dateKeyToDate(nextDate).getTime() - dateKeyToDate(currentMonthTurnDate).getTime()) /
+      (24 * 60 * 60 * 1000)
+    );
+    const anchor = dateKeyToDate(nightPharmacistTurnDate);
+    anchor.setDate(anchor.getDate() + shiftDays);
+    setNightPharmacistTurnDate(
+      toDateKey(anchor.getFullYear(), anchor.getMonth() + 1, anchor.getDate())
+    );
+  }
 
   return (
-    <section className="print-page panel">
+    <section className="print-page panel schedule-print-page">
       <div className="section-title row-title schedule-section-title">
         <div className="schedule-title-copy">
           <h2>{schedule.year}년 {String(schedule.month).padStart(2, "0")}월 근무표</h2>
@@ -552,9 +592,14 @@ function ScheduleTab({
             />
           </label>
         </div>
-        <button type="button" className="quiet no-print" onClick={() => setShowLists((open) => !open)}>
-          <Save size={16} /> 이름 리스트 편집
-        </button>
+        <div className="top-actions no-print">
+          <button type="button" className="quiet" onClick={() => setShowLists((open) => !open)}>
+            <Save size={16} /> 이름 리스트 편집
+          </button>
+          <button type="button" onClick={onPrint}>
+            <Printer size={16} /> 근무표 출력
+          </button>
+        </div>
       </div>
 
       <div className="schedule-weeks">
@@ -582,10 +627,14 @@ function ScheduleTab({
                   ))}
                 </tr>
                 {rows.map((row) => (
-                  <tr key={`${week.index}-${row.label}`}>
+                  <tr key={`${week.index}-${row.id}`}>
                     <td className="time-col">{row.label}</td>
                     {week.days.map((day, index) => {
-                      const value = day ? row.get(day) : "";
+                      const generatedValue = day ? row.get(day) : "";
+                      const editKey = day ? scheduleCellEditKey(day.dateKey, row.id) : "";
+                      const hasManualEdit = Boolean(day) && Object.prototype.hasOwnProperty.call(scheduleCellEdits, editKey);
+                      const value = hasManualEdit ? scheduleCellEdits[editKey] : generatedValue;
+                      const editable = Boolean(day) && row.id !== "nightCategory" && (Boolean(generatedValue) || hasManualEdit);
                       const weekendClass = value && day?.weekday === 6
                         ? "blue-day weekend-duty-cell"
                         : value && day?.weekday === 0
@@ -598,10 +647,24 @@ function ScheduleTab({
                       ].filter(Boolean).join(" ");
                       return (
                         <td
-                          key={`${week.index}-${row.label}-${index}`}
+                          key={`${week.index}-${row.id}-${index}`}
                           className={cellClasses}
                         >
-                          {value}
+                          {editable ? (
+                            <>
+                              <input
+                                className="schedule-cell-input no-print"
+                                value={value}
+                                onChange={(event) =>
+                                  setScheduleCellEdits({
+                                    ...scheduleCellEdits,
+                                    [editKey]: event.currentTarget.value
+                                  })
+                                }
+                              />
+                              <span className="schedule-cell-print-value">{value}</span>
+                            </>
+                          ) : value}
                         </td>
                       );
                     })}
@@ -638,11 +701,11 @@ function ScheduleTab({
           </label>
         ))}
         <label>
-          <span>나이트 턴 변경일(6주 주기)</span>
+          <span>나이트 턴 변경일(해당 월·6주 주기)</span>
           <input
             type="date"
-            value={nightPharmacistTurnDate}
-            onChange={(event) => setNightPharmacistTurnDate(event.currentTarget.value || DEFAULT_NIGHT_PHARMACIST_TURN_DATE)}
+            value={currentMonthTurnDate}
+            onChange={(event) => changeCurrentMonthTurnDate(event.currentTarget.value)}
           />
         </label>
       </div>
@@ -1505,25 +1568,58 @@ function NumberedNameListEditor({
   value: string[];
   onChange: (value: string[]) => void;
 }) {
-  const names = Array.from({ length: 8 }, (_, index) => value[index] ?? "");
+  const insertName = (index: number) => {
+    const next = [...value];
+    next.splice(index, 0, "");
+    onChange(next);
+  };
+
+  const removeName = (index: number) => {
+    onChange(value.filter((_, itemIndex) => itemIndex !== index));
+  };
 
   return (
     <div className="text-list-editor">
       <span>{title}</span>
-      {names.map((name, index) => (
-        <label className="row-title" key={index}>
+      {value.map((name, index) => (
+        <div className="numbered-name-row" key={index}>
           <strong>{index + 1}번</strong>
           <input
             type="text"
             value={name}
             onChange={(event) => {
-              const next = [...names];
+              const next = [...value];
               next[index] = event.currentTarget.value;
               onChange(next);
             }}
           />
-        </label>
+          <button
+            type="button"
+            className="icon-action-button"
+            title={`${index + 1}번 다음에 이름 추가`}
+            aria-label={`${index + 1}번 다음에 이름 추가`}
+            onClick={() => insertName(index + 1)}
+          >
+            <Plus size={15} />
+          </button>
+          <button
+            type="button"
+            className="icon-action-button danger"
+            title={`${index + 1}번 이름 삭제`}
+            aria-label={`${index + 1}번 이름 삭제`}
+            onClick={() => removeName(index)}
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
       ))}
+      <button
+        type="button"
+        className="secondary-button numbered-name-add"
+        onClick={() => insertName(value.length)}
+      >
+        <Plus size={15} /> 이름 추가
+      </button>
     </div>
   );
 }

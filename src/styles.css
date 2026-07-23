@@ -400,6 +400,25 @@ th {
   padding-inline: 2px;
 }
 
+.schedule-cell-input {
+  min-height: 0;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  font: inherit;
+  text-align: center;
+}
+
+.schedule-cell-input:focus {
+  border-color: var(--blue);
+  background: #ffffff;
+}
+
+.schedule-cell-print-value {
+  display: none;
+}
+
 .date-row td {
   font-weight: 800;
 }
@@ -475,6 +494,43 @@ th {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.numbered-name-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 30px 30px;
+  align-items: center;
+  gap: 5px;
+}
+
+.numbered-name-row strong {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.numbered-name-row input {
+  min-width: 0;
+}
+
+.icon-action-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--blue);
+}
+
+.icon-action-button.danger {
+  color: #a84837;
+}
+
+.numbered-name-add {
+  justify-content: center;
+  margin-top: 2px;
 }
 
 input,
@@ -1093,6 +1149,62 @@ textarea {
     margin-top: 2mm !important;
     color: #000000 !important;
     font-size: 14px !important;
+  }
+
+  .schedule-print-page {
+    padding: 0;
+    overflow: visible;
+  }
+
+  .schedule-print-page .schedule-weeks {
+    gap: 0;
+    padding: 0;
+  }
+
+  .schedule-print-page .schedule-week {
+    overflow: visible;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .schedule-print-page .schedule-week:not(:first-child) thead {
+    display: none;
+  }
+
+  .schedule-print-page .schedule-week-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .schedule-print-page .schedule-week-table th,
+  .schedule-print-page .schedule-week-table td {
+    min-width: 0;
+    height: 11px;
+    padding: 1px;
+    font-size: 6px;
+    line-height: 1.05;
+  }
+
+  .schedule-print-page .schedule-week-table .time-col {
+    width: 82px;
+    min-width: 82px;
+  }
+
+  .schedule-print-page .schedule-event-row td {
+    min-height: 0;
+  }
+
+  .schedule-print-page .schedule-chip {
+    margin: 0 auto;
+    padding: 1px 2px;
+    border-radius: 2px;
+    font-size: 5px;
+    line-height: 1;
+  }
+
+  .schedule-cell-print-value {
+    display: inline;
   }
 
   .printing-calendar .panel {
