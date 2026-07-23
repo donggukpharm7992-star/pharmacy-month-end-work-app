@@ -1097,6 +1097,29 @@ textarea {
     color: #222222 !important;
   }
 
+  .print-document-sheet,
+  .print-document-sheet * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-document-sheet .document-data-table th:nth-child(2),
+  .print-document-sheet .document-data-table td:nth-child(2) {
+    width: 32px;
+    min-width: 32px;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .medical-device-clean-room .equipment-document-table th span {
+    display: block !important;
+    margin-top: 1px;
+    font-size: 8px !important;
+    line-height: 1;
+    font-weight: 800;
+  }
+
   .document-data-table th {
     white-space: normal;
     overflow-wrap: anywhere;
