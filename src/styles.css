@@ -1092,6 +1092,11 @@ textarea {
     font-weight: 800;
   }
 
+  .date-highlight {
+    background: #e5e5e5 !important;
+    color: #222222 !important;
+  }
+
   .document-data-table th {
     white-space: normal;
     overflow-wrap: anywhere;
@@ -1223,6 +1228,21 @@ textarea {
   .refrigerator-temp-humidity,
   .refrigerator-outpatient {
     padding-inline: 8mm;
+  }
+
+  .refrigerator-outpatient .document-data-table {
+    height: 190mm;
+  }
+
+  .refrigerator-outpatient .document-data-table th,
+  .refrigerator-outpatient .document-data-table td {
+    height: 23px !important;
+    padding: 3px 2px;
+    font-size: 9px;
+  }
+
+  .refrigerator-outpatient .document-data-table tr {
+    height: 23px;
   }
 
   .refrigerator-ward-am .document-data-table th:first-child,
