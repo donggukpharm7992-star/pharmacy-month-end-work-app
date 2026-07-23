@@ -96,6 +96,7 @@ const AUGUST_2026_WEEKEND_STAFF = [
 ];
 
 export const defaultWeekendPharmacists = [
+  "김지혜",
   "최윤영",
   "이지은",
   "오아라",
@@ -126,6 +127,8 @@ const WEEKEND_STAFF_ROTATION_ANCHOR = "2026-09-05";
 const WEEKEND_STAFF_ROTATION_START_INDEX = 1;
 const HOLIDAY_STAFF_ROTATION_ANCHOR = "2026-09-24";
 const HOLIDAY_STAFF_ROTATION_START_INDEX = 6;
+const HALF_DAY_PHARMACIST_ROTATION_ANCHOR = "2026-09-05";
+const FULL_DAY_PHARMACIST_ROTATION_ANCHOR = "2026-09-06";
 
 function diffDays(dateKey: string, anchorKey: string): number {
   const date = dateKeyToDate(dateKey).getTime();
@@ -148,6 +151,52 @@ function modulo(value: number, divisor: number): number {
 function takeCycled<T>(items: T[], start: number, count: number): T[] {
   if (items.length === 0) return [];
   return Array.from({ length: count }, (_, offset) => items[(start + offset) % items.length]);
+}
+
+function rotateFromName(names: string[], anchorName: string): string[] {
+  const normalizedNames = names.map((name) => name.trim()).filter(Boolean);
+  const anchorIndex = normalizedNames.indexOf(anchorName);
+  if (anchorIndex < 0) return [anchorName, ...normalizedNames];
+  return [...normalizedNames.slice(anchorIndex), ...normalizedNames.slice(0, anchorIndex)];
+}
+
+function isFirstSaturday(dateKey: string): boolean {
+  const date = dateKeyToDate(dateKey);
+  return date.getDay() === 6 && date.getDate() <= 7;
+}
+
+function countFullDayPharmacistSlotsBefore(dateKey: string): number {
+  const target = dateKeyToDate(dateKey);
+  let current = dateKeyToDate(FULL_DAY_PHARMACIST_ROTATION_ANCHOR);
+  let slots = 0;
+
+  while (current < target) {
+    const currentKey = toDateKey(current.getFullYear(), current.getMonth() + 1, current.getDate());
+    if (isHoliday(currentKey)) {
+      slots += 2;
+    } else if (current.getDay() === 0) {
+      slots += 1;
+    } else if (current.getDay() === 6 && !isFirstSaturday(currentKey)) {
+      slots += 1;
+    }
+    current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
+  }
+
+  return slots;
+}
+
+function countHalfDayPharmacistSlotsBefore(dateKey: string): number {
+  const target = dateKeyToDate(dateKey);
+  let current = dateKeyToDate(HALF_DAY_PHARMACIST_ROTATION_ANCHOR);
+  let slots = 0;
+
+  while (current < target) {
+    const currentKey = toDateKey(current.getFullYear(), current.getMonth() + 1, current.getDate());
+    if (current.getDay() === 6) slots += isFirstSaturday(currentKey) ? 3 : 2;
+    current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
+  }
+
+  return slots;
 }
 
 function countWeekendStaffSlotsBefore(dateKey: string): number {
@@ -329,6 +378,18 @@ function dayPharmacistNames(
 ): string[] {
   if (weekday !== 6 && weekday !== 0 && !holiday) return [];
   const targetDay = dateKeyToDate(dateKey).getDate();
+
+  if (dateKey >= FULL_DAY_PHARMACIST_ROTATION_ANCHOR) {
+    const orderedNames = rotateFromName(names, "박주영");
+    const rotationSlots = countFullDayPharmacistSlotsBefore(dateKey);
+    if (holiday) return takeCycled(orderedNames, rotationSlots, 2);
+    if (isFirstSaturday(dateKey)) return ["최윤영", "이승현"];
+    if (weekday === 6) return [...takeCycled(orderedNames, rotationSlots, 1), "이승현"];
+    const rotating = takeCycled(orderedNames, rotationSlots, 1)[0];
+    if (!rotating) return ["서윤석"];
+    return month % 2 === 1 ? ["서윤석", rotating] : [rotating, "서윤석"];
+  }
+
   let rotationSlots = 0;
 
   for (let day = 1; day < targetDay; day += 1) {
@@ -354,6 +415,11 @@ function dayPharmacistNames(
 
 function upperMorningPharmacists(dateKey: string, weekday: number, names: string[]): string[] {
   if (weekday !== 6) return [];
+  if (dateKey >= HALF_DAY_PHARMACIST_ROTATION_ANCHOR) {
+    const orderedNames = rotateFromName(names, "김지혜");
+    const start = countHalfDayPharmacistSlotsBefore(dateKey);
+    return takeCycled(orderedNames, start, isFirstSaturday(dateKey) ? 3 : 2);
+  }
   const reversed = [...names].reverse();
   const weekIndex = Math.floor(dateKeyToDate(dateKey).getDate() / 7);
   const count = weekIndex === 0 ? 3 : 2;

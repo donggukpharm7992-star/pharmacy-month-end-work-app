@@ -150,7 +150,7 @@ describe("schedule rules", () => {
   });
 
   it("fixes the first Saturday pharmacist pair and rotates the remaining weekend slot", () => {
-    const names = ["약사1", "약사2", "약사3", "약사4", "약사5"];
+    const names = ["김지혜", "약사1", "약사2", "박주영", "약사3"];
     const september = buildMonthSchedule(2026, 9, { weekendPharmacists: names });
     const december = buildMonthSchedule(2026, 12, { weekendPharmacists: names });
 
@@ -160,15 +160,35 @@ describe("schedule rules", () => {
     ]);
     expect(september.days.find((day) => day.dateKey === "2026-09-06")?.dayPharmacists).toEqual([
       "서윤석",
-      "약사1"
+      "박주영"
     ]);
     expect(september.days.find((day) => day.dateKey === "2026-09-12")?.dayPharmacists).toEqual([
-      "약사2",
+      "약사3",
       "이승현"
     ]);
-    expect(december.days.find((day) => day.dateKey === "2026-12-06")?.dayPharmacists).toEqual([
-      "약사1",
-      "서윤석"
+    expect(december.days.find((day) => day.dateKey === "2026-12-06")?.dayPharmacists[1]).toBe("서윤석");
+  });
+
+  it("anchors half-day duty on Kim Jihye on September 5 and full-day duty on Park Juyoung on September 6", () => {
+    const names = ["약사1", "김지혜", "약사2", "박주영", "약사3"];
+    const schedule = buildMonthSchedule(2026, 9, { weekendPharmacists: names });
+
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-05")?.upperMorningPharmacists).toEqual([
+      "김지혜",
+      "약사2",
+      "박주영"
+    ]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-12")?.upperMorningPharmacists).toEqual([
+      "약사3",
+      "약사1"
+    ]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-06")?.dayPharmacists).toEqual([
+      "서윤석",
+      "박주영"
+    ]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-12")?.dayPharmacists).toEqual([
+      "약사3",
+      "이승현"
     ]);
   });
 
