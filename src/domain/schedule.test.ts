@@ -24,6 +24,15 @@ describe("schedule rules", () => {
     ]);
   });
 
+  it("shows each night pharmacist pair in the requested order after a turn", () => {
+    const names = ["윤주원", "정순미", "송유희", "이상훈", "장소희", "김동신"];
+
+    expect(assignNightPharmacists("2026-09-01", names, "2026-09-21")).toEqual(["윤주원", "이상훈"]);
+    expect(assignNightPharmacists("2026-09-21", names, "2026-09-21")).toEqual(["이상훈", "윤주원"]);
+    expect(assignNightPharmacists("2026-09-22", names, "2026-09-21")).toEqual(["장소희", "정순미"]);
+    expect(assignNightPharmacists("2026-09-23", names, "2026-09-21")).toEqual(["김동신", "송유희"]);
+  });
+
   it("pairs night pharmacists by positions 1+4, 2+5, and 3+6", () => {
     const names = ["윤주원", "정순미", "송유희", "이상훈", "장소희", "김동신"];
 
@@ -44,6 +53,22 @@ describe("schedule rules", () => {
     expect(assignNightStaff("2026-09-02", positions)).toEqual(["고우리", "전다은", "현경아"]);
     expect(assignNightStaff("2026-09-03", positions)).toEqual(["고우리", "전다은", "이현주"]);
     expect(assignNightStaff("2026-09-04", positions)).toEqual(["이율경", "전다은", "이현주"]);
+  });
+
+  it("keeps legacy slash-joined night staff positions working after a name edit", () => {
+    const legacyPositions = [
+      ["이율경/고우리"],
+      ["전다은/신혜정"],
+      ["이현주/현경아"]
+    ];
+
+    expect(assignNightStaff("2026-09-01", legacyPositions)).toEqual(["고우리", "신혜정", "현경아"]);
+  });
+
+  it("keeps three night staff on every August date", () => {
+    const schedule = buildMonthSchedule(2026, 8);
+
+    expect(schedule.days.every((day) => day.nightStaff.length === 3)).toBe(true);
   });
 
   it("builds the selected month schedule with event dates surfaced beside the table", () => {
@@ -80,6 +105,11 @@ describe("schedule rules", () => {
     });
     expect(buildNightPharmacistTurnEvents(2026, 11)).toContainEqual({
       date: "2026-11-02",
+      title: "나이트 턴 변경",
+      type: "turn"
+    });
+    expect(buildNightPharmacistTurnEvents(2026, 8, "2026-08-10")).toContainEqual({
+      date: "2026-08-10",
       title: "나이트 턴 변경",
       type: "turn"
     });

@@ -16,10 +16,12 @@ import { buildMonthDays, CalendarEvent, getHolidayName, isWeekend, toDateKey } f
 import {
   buildMonthSchedule,
   buildScheduleWeeks,
+  DEFAULT_NIGHT_PHARMACIST_TURN_DATE,
   defaultNightPharmacists,
   defaultNightStaffPositions,
   defaultWeekendPharmacists,
   defaultWeekendStaff,
+  normalizeNightStaffPositions,
   EventDateKey,
   scheduleNameDensityClass,
   ScheduleEventDates
@@ -187,6 +189,10 @@ export default function App() {
       staffTaskChange: ""
     }
   );
+  const [nightPharmacistTurnDate, setNightPharmacistTurnDate] = useLocalStorageState(
+    "pharmacy-app-night-pharmacist-turn-date",
+    DEFAULT_NIGHT_PHARMACIST_TURN_DATE
+  );
 
   const [pharmacistCellEdits, setPharmacistCellEdits] = useLocalStorageState<Record<string, string>>(
     "pharmacy-app-pharmacist-assignment-edits",
@@ -212,11 +218,12 @@ export default function App() {
       buildMonthSchedule(year, month, {
         eventDates,
         nightPharmacists: lists.nightPharmacists,
+        nightPharmacistTurnDate,
         nightStaffPositions: lists.nightStaffPositions,
         weekendStaff: lists.weekendStaff,
         weekendPharmacists: lists.weekendPharmacists
       }),
-    [eventDates, lists, month, year]
+    [eventDates, lists, month, nightPharmacistTurnDate, year]
   );
 
   const calendarEvents: CalendarEvent[] = schedule.events;
@@ -347,6 +354,8 @@ export default function App() {
             setLists={setLists}
             eventDates={eventDates}
             setEventDates={setEventDates}
+            nightPharmacistTurnDate={nightPharmacistTurnDate}
+            setNightPharmacistTurnDate={setNightPharmacistTurnDate}
           />
         )}
 
@@ -428,13 +437,17 @@ function ScheduleTab({
   lists,
   setLists,
   eventDates,
-  setEventDates
+  setEventDates,
+  nightPharmacistTurnDate,
+  setNightPharmacistTurnDate
 }: {
   schedule: ReturnType<typeof buildMonthSchedule>;
   lists: EditableLists;
   setLists: (value: EditableLists) => void;
   eventDates: ScheduleEventDates;
   setEventDates: (value: ScheduleEventDates) => void;
+  nightPharmacistTurnDate: string;
+  setNightPharmacistTurnDate: (value: string) => void;
 }) {
   const [showLists, setShowLists] = useState(true);
   const weeks = buildScheduleWeeks(schedule);
@@ -479,7 +492,7 @@ function ScheduleTab({
                   {week.days.map((day, index) => (
                     <td
                       key={`date-${week.index}-${index}`}
-                      className={day == null ? "blank-day" : day.weekday === 0 || day.holiday ? "red-day" : day.weekday === 6 ? "blue-day" : ""}
+                      className={day == null ? "blank-day" : day.weekday === 0 || day.holiday || day.weekday === 6 ? "date-highlight" : ""}
                     >
                       {day ? `${schedule.month}월${day.day}일` : ""}
                     </td>
@@ -497,6 +510,7 @@ function ScheduleTab({
                           : "";
                       const cellClasses = [
                         day == null ? "blank-day" : weekendClass,
+                        day && (day.weekday === 0 || day.weekday === 6 || day.holiday) ? "date-highlight" : "",
                         value ? scheduleNameDensityClass(value) : ""
                       ].filter(Boolean).join(" ");
                       return (
@@ -513,7 +527,7 @@ function ScheduleTab({
                 <tr className="schedule-event-row">
                   <td className="time-col">일정</td>
                   {week.days.map((day, index) => (
-                    <td key={`event-${week.index}-${index}`} className={day == null ? "blank-day" : ""}>
+                    <td key={`event-${week.index}-${index}`} className={day == null ? "blank-day" : day.weekday === 0 || day.weekday === 6 || day.holiday ? "date-highlight" : ""}>
                       {day?.holidayName && <span className="schedule-chip holiday-chip">{day.holidayName}</span>}
                       {day?.events.map((event) => (
                         <span className="schedule-chip" key={`${event.date}-${event.title}`}>{event.title}</span>
@@ -540,6 +554,14 @@ function ScheduleTab({
             />
           </label>
         ))}
+        <label>
+          <span>나이트 턴 변경일(6주 주기)</span>
+          <input
+            type="date"
+            value={nightPharmacistTurnDate}
+            onChange={(event) => setNightPharmacistTurnDate(event.currentTarget.value || DEFAULT_NIGHT_PHARMACIST_TURN_DATE)}
+          />
+        </label>
       </div>
 
       {showLists && (
@@ -551,8 +573,8 @@ function ScheduleTab({
           />
           <TextListEditor
             title="나이트 직원 포지션"
-            value={lists.nightStaffPositions.map((row) => row.join("/")).join("\n")}
-            onChange={(value) => setLists({ ...lists, nightStaffPositions: positionTextToList(value) })}
+            value={normalizeNightStaffPositions(lists.nightStaffPositions).map((row) => row.join("/")).join("\n")}
+            onChange={(value) => setLists({ ...lists, nightStaffPositions: normalizeNightStaffPositions(positionTextToList(value)) })}
           />
           <TextListEditor
             title="직원 이름 리스트"
@@ -1064,7 +1086,7 @@ function PrintDocumentSheet({
   group: MonthEndDocumentGroup;
   item: MonthEndPrintItem;
 }) {
-  const days = Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => index + 1);
+  const days = buildChecklistMonthDays(year, month);
   return (
     <section className={`print-document-sheet ${item.id}`}>
       <h3>{group.title} - {item.title}</h3>
@@ -1078,17 +1100,16 @@ function PrintDocumentSheet({
       {item.notes?.map((note) => <p className="print-document-note" key={note}>{note}</p>)}
       {item.equipment ? (
         <table className="equipment-document-table document-data-table">
-          <thead><tr><th>자산번호</th><th>장비명</th>{days.map((day) => <th key={day}>{day}</th>)}<th>점검자</th></tr></thead>
+          <thead><tr><th>자산번호</th><th>장비명</th>{days.map((day) => <th className={day.offDay ? "date-highlight" : ""} key={day.dateKey}>{day.day}<span>{day.weekdayLabel}</span>{day.holidayName && <small>{day.holidayName}</small>}</th>)}<th>점검자</th></tr></thead>
           <tbody>{item.equipment.map((equipment) => (
-            <tr key={equipment.assetNo}><td>{equipment.assetNo}</td><td>{equipment.name}</td>{days.map((day) => <td className="empty-write-cell" key={day}></td>)}<td></td></tr>
+            <tr key={equipment.assetNo}><td>{equipment.assetNo}</td><td>{equipment.name}</td>{days.map((day) => <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={day.dateKey}></td>)}<td></td></tr>
           ))}</tbody>
         </table>
       ) : (
         <table className="document-data-table">
           <thead><tr><th>일자</th><th>요일</th>{item.columns.map((field) => <th key={field}>{field}</th>)}</tr></thead>
           <tbody>{days.map((day) => {
-            const date = new Date(year, month - 1, day);
-            return <tr key={day}><td>{day}일</td><td>{["일", "월", "화", "수", "목", "금", "토"][date.getDay()]}</td>{item.columns.map((field) => <td className="empty-write-cell" key={field}></td>)}</tr>;
+            return <tr className={day.offDay ? "date-highlight" : ""} key={day.dateKey}><td>{day.day}일</td><td>{day.weekdayLabel}{day.holidayName && <small className="holiday-inline">{day.holidayName}</small>}</td>{item.columns.map((field) => <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={field}></td>)}</tr>;
           })}</tbody>
         </table>
       )}
@@ -1125,9 +1146,12 @@ function GlobalChecklistPrint({ year, month }: { year: number; month: number }) 
           <h3>{year}년 {month}월 {group.title}</h3>
           {group.sections.map((section) => (
             <table className="monthly-checklist-table" key={section}>
-              <thead><tr><th>번호</th><th>체크 항목</th><th>기준</th>{monthDays.map((day) => <th key={day.dateKey}>{day.day}</th>)}</tr></thead>
+              <thead>
+                <tr><th rowSpan={2}>번호</th><th rowSpan={2}>체크 항목</th><th rowSpan={2}>기준</th>{monthDays.map((day) => <th className={day.offDay ? "date-highlight" : ""} key={day.dateKey}>{day.day}</th>)}</tr>
+                <tr>{monthDays.map((day) => <th className={`${day.offDay ? "date-highlight " : ""}checklist-weekday-cell`} key={`${day.dateKey}-weekday`}>{day.weekdayLabel}{day.holidayName && <small>{day.holidayName}</small>}</th>)}</tr>
+              </thead>
               <tbody>{(staffChecklistSections[section] ?? []).map((item, index) => (
-                <tr key={item}><td>{index + 1}</td><td>{item}</td><td></td>{monthDays.map((day) => <td className="empty-write-cell" key={day.dateKey}></td>)}</tr>
+                <tr key={item}><td>{index + 1}</td><td>{item}</td><td></td>{monthDays.map((day) => <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={day.dateKey}></td>)}</tr>
               ))}</tbody>
             </table>
           ))}
@@ -1163,9 +1187,9 @@ function NotebookSourceTable({
       <tbody>
         {monthDays.map((day) => (
           <tr className={day.offDay ? "date-highlight" : ""} key={day.dateKey}>
-            <td>{month}/{day.day}</td>
-            <td>{day.weekdayLabel}</td>
-            {columns.slice(2).map((column) => <td className="empty-write-cell" key={column}></td>)}
+            <td className={day.offDay ? "date-highlight" : ""}>{month}/{day.day}</td>
+            <td className={day.offDay ? "date-highlight" : ""}>{day.weekdayLabel}</td>
+            {columns.slice(2).map((column) => <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={column}></td>)}
           </tr>
         ))}
       </tbody>
