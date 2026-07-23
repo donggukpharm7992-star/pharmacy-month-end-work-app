@@ -54,7 +54,7 @@ export type ScheduleWeek = {
   days: Array<ScheduleDay | null>;
 };
 
-export const defaultNightPharmacists = ["윤주원", "정순미", "송유희", "이상훈", "장소희", "김동신"];
+export const defaultNightPharmacists = ["윤주원", "정순미", "송유희", "김동신", "이상훈", "장소희"];
 
 export const defaultNightStaffPositions = [
   ["이율경", "고우리"],
@@ -108,8 +108,8 @@ const eventTitles: Record<EventDateKey, string> = {
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-export const DEFAULT_NIGHT_PHARMACIST_TURN_DATE = "2026-09-21";
-const NIGHT_PHARMACIST_PAIR_ANCHOR = "2026-09-01";
+export const DEFAULT_NIGHT_PHARMACIST_TURN_DATE = "2026-08-10";
+const NIGHT_PHARMACIST_PAIR_ANCHOR = "2026-07-29";
 const NIGHT_STAFF_POSITION_ANCHORS = ["2026-09-01", "2026-08-30", "2026-08-31"];
 
 function diffDays(dateKey: string, anchorKey: string): number {
@@ -159,18 +159,19 @@ export function assignNightPharmacists(
   turnDate = DEFAULT_NIGHT_PHARMACIST_TURN_DATE
 ): string[] {
   const turnCount = nightPharmacistTurnCount(dateKey, turnDate);
-  const pairAnchor = turnCount === 0
+  const sequenceAnchor = turnCount === 0
     ? NIGHT_PHARMACIST_PAIR_ANCHOR
     : (() => {
       const cycleStart = dateKeyToDate(turnDate);
       cycleStart.setDate(cycleStart.getDate() + (turnCount - 1) * 42);
       return toDateKey(cycleStart.getFullYear(), cycleStart.getMonth() + 1, cycleStart.getDate());
     })();
-  const pairIndex = modulo(diffDays(dateKey, pairAnchor), 3);
-  const pair = turnCount % 2 === 0
-    ? [names[pairIndex], names[pairIndex + 3]]
-    : [names[pairIndex + 3], names[pairIndex]];
-  return pair.filter(Boolean);
+  const orderedNames = rotateNightPharmacists(names, dateKey, turnDate);
+  const sequenceIndex = modulo(diffDays(dateKey, sequenceAnchor), 6);
+  return [
+    orderedNames[sequenceIndex],
+    orderedNames[(sequenceIndex + 3) % 6]
+  ].filter(Boolean);
 }
 
 export function assignNightStaff(

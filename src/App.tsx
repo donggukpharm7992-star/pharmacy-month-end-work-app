@@ -75,6 +75,9 @@ type AssignmentNameLists = {
   rotatingPharmacistNames: string[];
 };
 
+const legacyNightPharmacistOrder = ["윤주원", "정순미", "송유희", "이상훈", "장소희", "김동신"];
+const nightPharmacistAugustRuleMigrationKey = "pharmacy-app-night-pharmacist-august-2026-rule";
+
 const eventLabels: Record<EventDateKey, string> = {
   expiryReview: "유효기간 조사일",
   monthlyMeeting: "월례회의",
@@ -193,6 +196,23 @@ export default function App() {
     "pharmacy-app-night-pharmacist-turn-date",
     DEFAULT_NIGHT_PHARMACIST_TURN_DATE
   );
+
+  useEffect(() => {
+    if (window.localStorage.getItem(nightPharmacistAugustRuleMigrationKey) === "applied") return;
+
+    const usesLegacyOrder =
+      lists.nightPharmacists.length === legacyNightPharmacistOrder.length &&
+      lists.nightPharmacists.every((name, index) => name === legacyNightPharmacistOrder[index]);
+
+    if (usesLegacyOrder) {
+      setLists((current) => ({ ...current, nightPharmacists: defaultNightPharmacists }));
+    }
+    if (nightPharmacistTurnDate === "2026-09-21") {
+      setNightPharmacistTurnDate(DEFAULT_NIGHT_PHARMACIST_TURN_DATE);
+    }
+
+    window.localStorage.setItem(nightPharmacistAugustRuleMigrationKey, "applied");
+  }, [lists.nightPharmacists, nightPharmacistTurnDate, setLists, setNightPharmacistTurnDate]);
 
   const [pharmacistCellEdits, setPharmacistCellEdits] = useLocalStorageState<Record<string, string>>(
     "pharmacy-app-pharmacist-assignment-edits",
