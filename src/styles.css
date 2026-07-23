@@ -587,12 +587,23 @@ textarea {
   min-width: 1580px;
 }
 
-.staff-assignment-table th:nth-child(5),
-.staff-assignment-table td:nth-child(5),
+.staff-assignment-table th:nth-child(4),
+.staff-assignment-table td:nth-child(4),
+.staff-assignment-table th:nth-child(7),
+.staff-assignment-table td:nth-child(7),
 .staff-assignment-table th:nth-child(8),
 .staff-assignment-table td:nth-child(8) {
-  min-width: 270px;
+  min-width: 300px;
   text-align: left;
+}
+
+.staff-assignment-table th:nth-child(5),
+.staff-assignment-table td:nth-child(5),
+.staff-assignment-table th:nth-child(6),
+.staff-assignment-table td:nth-child(6) {
+  min-width: 88px;
+  width: 88px;
+  text-align: center;
 }
 
 .staff-assignment-table th:nth-child(10),
