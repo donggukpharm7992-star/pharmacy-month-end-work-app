@@ -773,7 +773,18 @@ textarea {
 
 .date-highlight th,
 .date-highlight td {
-  background: #d9dde0 !important;
+  background-color: #d9dde0 !important;
+}
+
+.monthly-checklist-table th.date-highlight,
+.monthly-checklist-table td.date-highlight,
+.notebook-source-table td.date-highlight,
+.notebook-month-table td.date-highlight,
+.document-data-table th.date-highlight,
+.document-data-table td.date-highlight,
+.equipment-document-table th.date-highlight,
+.equipment-document-table td.date-highlight {
+  background-color: #d9dde0 !important;
 }
 
 .selected-equipment-row td {
@@ -1000,7 +1011,7 @@ textarea {
   .blue-day,
   .weekend-duty-cell.red-day,
   .weekend-duty-cell.blue-day {
-    background: #d9dde0 !important;
+    background-color: #d9dde0 !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
@@ -1231,21 +1242,23 @@ textarea {
 
   .medical-device-clean-room .equipment-document-table th,
   .medical-device-clean-room .equipment-document-table td {
-    padding: 4px 2px;
-    font-size: 9px;
+    padding: 2px 1px;
+    font-size: 8px;
     line-height: 1.2;
-    height: 27px !important;
+    height: 22px !important;
     vertical-align: middle;
     white-space: normal;
     overflow-wrap: anywhere;
   }
 
   .medical-device-clean-room .equipment-document-table tr {
-    height: 27px;
+    height: 22px;
   }
 
   .medical-device-clean-room .equipment-document-table {
-    height: 135mm;
+    height: 110mm;
+    break-inside: auto;
+    page-break-inside: auto;
   }
 
   .medical-device-clean-room .equipment-document-table th:first-child,
