@@ -105,7 +105,6 @@ export const defaultWeekendPharmacists = [
   "박현영",
   "김연지",
   "이호연",
-  "김경원",
   "김수빈",
   "박주영"
 ];
@@ -172,11 +171,11 @@ function countFullDayPharmacistSlotsBefore(dateKey: string): number {
 
   while (current < target) {
     const currentKey = toDateKey(current.getFullYear(), current.getMonth() + 1, current.getDate());
-    if (isHoliday(currentKey)) {
+    if (current.getDay() === 6) {
+      if (!isFirstSaturday(currentKey)) slots += 1;
+    } else if (isHoliday(currentKey)) {
       slots += 2;
     } else if (current.getDay() === 0) {
-      slots += 1;
-    } else if (current.getDay() === 6 && !isFirstSaturday(currentKey)) {
       slots += 1;
     }
     current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
@@ -192,7 +191,11 @@ function countHalfDayPharmacistSlotsBefore(dateKey: string): number {
 
   while (current < target) {
     const currentKey = toDateKey(current.getFullYear(), current.getMonth() + 1, current.getDate());
-    if (current.getDay() === 6) slots += isFirstSaturday(currentKey) ? 3 : 2;
+    if (current.getDay() === 6) {
+      slots += isFirstSaturday(currentKey) && !isHoliday(currentKey) ? 3 : 2;
+    } else if (isHoliday(currentKey)) {
+      slots += 1;
+    }
     current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
   }
 
@@ -226,7 +229,7 @@ function countHolidayStaffSlotsBefore(dateKey: string): number {
 
   while (current < target) {
     const currentKey = toDateKey(current.getFullYear(), current.getMonth() + 1, current.getDate());
-    if (isHoliday(currentKey)) slots += 1;
+    if (isHoliday(currentKey) && current.getDay() !== 6) slots += 1;
     current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
   }
 
@@ -382,9 +385,9 @@ function dayPharmacistNames(
   if (dateKey >= FULL_DAY_PHARMACIST_ROTATION_ANCHOR) {
     const orderedNames = rotateFromName(names, "박주영");
     const rotationSlots = countFullDayPharmacistSlotsBefore(dateKey);
-    if (holiday) return takeCycled(orderedNames, rotationSlots, 2);
     if (isFirstSaturday(dateKey)) return ["최윤영", "이승현"];
     if (weekday === 6) return [...takeCycled(orderedNames, rotationSlots, 1), "이승현"];
+    if (holiday) return takeCycled(orderedNames, rotationSlots, 2);
     const rotating = takeCycled(orderedNames, rotationSlots, 1)[0];
     if (!rotating) return ["서윤석"];
     return month % 2 === 1 ? ["서윤석", rotating] : [rotating, "서윤석"];
@@ -404,22 +407,31 @@ function dayPharmacistNames(
     }
   }
 
-  if (holiday) return takeCycled(names, rotationSlots, 2);
   if (weekday === 6 && targetDay <= 7) return ["최윤영", "이승현"];
   if (weekday === 6) return [...takeCycled(names, rotationSlots, 1), "이승현"];
+  if (holiday) return takeCycled(names, rotationSlots, 2);
   const fixedFirst = month % 2 === 1;
   const rotating = takeCycled(names, rotationSlots, 1)[0];
   if (!rotating) return ["서윤석"];
   return fixedFirst ? ["서윤석", rotating] : [rotating, "서윤석"];
 }
 
-function upperMorningPharmacists(dateKey: string, weekday: number, names: string[]): string[] {
-  if (weekday !== 6) return [];
+function upperMorningPharmacists(
+  dateKey: string,
+  weekday: number,
+  holiday: boolean,
+  names: string[]
+): string[] {
+  if (weekday !== 6 && !holiday) return [];
   if (dateKey >= HALF_DAY_PHARMACIST_ROTATION_ANCHOR) {
     const orderedNames = rotateFromName(names, "김지혜");
     const start = countHalfDayPharmacistSlotsBefore(dateKey);
-    return takeCycled(orderedNames, start, isFirstSaturday(dateKey) ? 3 : 2);
+    const count = weekday === 6
+      ? isFirstSaturday(dateKey) && !holiday ? 3 : 2
+      : 1;
+    return takeCycled(orderedNames, start, count);
   }
+  if (holiday && weekday !== 6) return takeCycled([...names].reverse(), 0, 1);
   const reversed = [...names].reverse();
   const weekIndex = Math.floor(dateKeyToDate(dateKey).getDate() / 7);
   const count = weekIndex === 0 ? 3 : 2;
@@ -458,14 +470,14 @@ export function buildMonthSchedule(
         : [];
       legacyWeekendStaffCursor += morningStaff.length;
 
-      if (weekday === 0 || holiday) {
+      if ((weekday === 0 || holiday) && weekday !== 6) {
         const assigned = takeCycled(AUGUST_2026_WEEKEND_STAFF, legacyWeekendStaffCursor, 1);
         legacyWeekendStaffCursor += 1;
         lowerMorningStaff = dateKey === "2026-08-17" ? ["김지현"] : assigned;
       }
     } else if (dateKey >= "2026-09-01") {
       morningStaff = weekday === 6 ? assignWeekendDutyStaff(dateKey, weekendStaff, 2) : [];
-      lowerMorningStaff = holiday
+      lowerMorningStaff = holiday && weekday !== 6
         ? assignHolidayDutyStaff(dateKey, weekendStaff)
         : weekday === 0
           ? assignWeekendDutyStaff(dateKey, weekendStaff, 1)
@@ -473,7 +485,7 @@ export function buildMonthSchedule(
     } else {
       morningStaff = weekday === 6 ? takeCycled(weekendStaff, legacyWeekendStaffCursor, 2) : [];
       legacyWeekendStaffCursor += morningStaff.length;
-      if (weekday === 0 || holiday) {
+      if ((weekday === 0 || holiday) && weekday !== 6) {
         lowerMorningStaff = takeCycled(weekendStaff, legacyWeekendStaffCursor, 1);
         legacyWeekendStaffCursor += 1;
       }
@@ -491,7 +503,7 @@ export function buildMonthSchedule(
       morningStaff,
       lowerMorningStaff,
       dayPharmacists: dayPharmacistNames(dateKey, weekday, holiday, year, month, weekendPharmacists),
-      upperMorningPharmacists: upperMorningPharmacists(dateKey, weekday, weekendPharmacists),
+      upperMorningPharmacists: upperMorningPharmacists(dateKey, weekday, holiday, weekendPharmacists),
       notes: []
     };
   });

@@ -137,7 +137,7 @@ describe("schedule rules", () => {
     expect(schedule.days.find((day) => day.dateKey === "2026-09-20")?.lowerMorningStaff).toEqual(["박종연"]);
     expect(schedule.days.find((day) => day.dateKey === "2026-09-24")?.lowerMorningStaff).toEqual(["김서훈"]);
     expect(schedule.days.find((day) => day.dateKey === "2026-09-25")?.lowerMorningStaff).toEqual(["심관석"]);
-    expect(schedule.days.find((day) => day.dateKey === "2026-09-26")?.lowerMorningStaff).toEqual(["김동희"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-26")?.lowerMorningStaff).toEqual([]);
   });
 
   it("uses edited staff names without changing their numbered rotation positions", () => {
@@ -190,6 +190,27 @@ describe("schedule rules", () => {
       "약사3",
       "이승현"
     ]);
+  });
+
+  it("adds one half-day pharmacist on holidays and keeps Saturday rules when a holiday overlaps Saturday", () => {
+    const september = buildMonthSchedule(2026, 9);
+    const october = buildMonthSchedule(2026, 10);
+    const weekdayHoliday = september.days.find((day) => day.dateKey === "2026-09-24");
+    const saturdayHoliday = september.days.find((day) => day.dateKey === "2026-09-26");
+    const firstSaturdayHoliday = october.days.find((day) => day.dateKey === "2026-10-03");
+
+    expect(weekdayHoliday?.upperMorningPharmacists).toEqual(["김연지"]);
+    expect(september.days.find((day) => day.dateKey === "2026-09-25")?.upperMorningPharmacists).toEqual([
+      "이호연"
+    ]);
+    expect(saturdayHoliday?.morningStaff).toHaveLength(2);
+    expect(saturdayHoliday?.lowerMorningStaff).toEqual([]);
+    expect(saturdayHoliday?.dayPharmacists[1]).toBe("이승현");
+    expect(saturdayHoliday?.upperMorningPharmacists).toEqual(["김수빈", "박주영"]);
+    expect(firstSaturdayHoliday?.morningStaff).toHaveLength(2);
+    expect(firstSaturdayHoliday?.lowerMorningStaff).toEqual([]);
+    expect(firstSaturdayHoliday?.dayPharmacists).toEqual(["최윤영", "이승현"]);
+    expect(firstSaturdayHoliday?.upperMorningPharmacists).toHaveLength(2);
   });
 
   it("builds the selected month schedule with event dates surfaced beside the table", () => {
