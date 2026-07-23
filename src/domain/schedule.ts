@@ -99,12 +99,12 @@ export const defaultWeekendPharmacists = [
 ];
 
 const eventTitles: Record<EventDateKey, string> = {
-  expiryReview: "유효기간 조사일",
+  expiryReview: "유효기간조사/휴가금지",
   monthlyMeeting: "월례회의",
-  deepClean: "대청소",
-  oralInventory: "재고 조사_경구",
-  injectionInventory: "재고조사_주사",
-  staffTaskChange: "직원 업무 변경일"
+  deepClean: "대청소_휴가금지",
+  oralInventory: "재고조사_경구/휴가금지",
+  injectionInventory: "재고조사/주사-휴가금지",
+  staffTaskChange: "직원업무 변경"
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -133,6 +133,35 @@ function modulo(value: number, divisor: number): number {
 function takeCycled<T>(items: T[], start: number, count: number): T[] {
   if (items.length === 0) return [];
   return Array.from({ length: count }, (_, offset) => items[(start + offset) % items.length]);
+}
+
+function nthWorkingWeekdayDateKey(
+  year: number,
+  month: number,
+  weekday: number,
+  occurrence: number
+): string {
+  let count = 0;
+
+  for (let day = 1; day <= daysInMonth(year, month); day += 1) {
+    const dateKey = toDateKey(year, month, day);
+    if (dateKeyToDate(dateKey).getDay() !== weekday || isHoliday(dateKey)) continue;
+    count += 1;
+    if (count === occurrence) return dateKey;
+  }
+
+  return "";
+}
+
+export function buildDefaultScheduleEventDates(year: number, month: number): ScheduleEventDates {
+  return {
+    expiryReview: nthWorkingWeekdayDateKey(year, month, 4, 1),
+    monthlyMeeting: nthWorkingWeekdayDateKey(year, month, 2, 2),
+    deepClean: nthWorkingWeekdayDateKey(year, month, 4, 2),
+    oralInventory: nthWorkingWeekdayDateKey(year, month, 3, 3),
+    injectionInventory: nthWorkingWeekdayDateKey(year, month, 4, 3),
+    staffTaskChange: nthWorkingWeekdayDateKey(year, month, 3, 4)
+  };
 }
 
 function nightPharmacistTurnCount(dateKey: string, turnDate: string): number {
@@ -272,7 +301,8 @@ export function buildMonthSchedule(
   );
   const weekendStaff = options.weekendStaff ?? defaultWeekendStaff;
   const weekendPharmacists = options.weekendPharmacists ?? defaultWeekendPharmacists;
-  const events = [...buildEvents(options.eventDates), ...buildNightPharmacistTurnEvents(year, month, nightPharmacistTurnDate)];
+  const eventDates = options.eventDates ?? buildDefaultScheduleEventDates(year, month);
+  const events = [...buildEvents(eventDates), ...buildNightPharmacistTurnEvents(year, month, nightPharmacistTurnDate)];
   let weekendStaffCursor = 0;
 
   const days: ScheduleDay[] = Array.from({ length: daysInMonth(year, month) }, (_, index) => {

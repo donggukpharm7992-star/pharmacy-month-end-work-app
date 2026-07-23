@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assignNightPharmacists,
   assignNightStaff,
+  buildDefaultScheduleEventDates,
   buildMonthSchedule,
   buildNightPharmacistTurnEvents,
   buildScheduleWeeks,
@@ -10,6 +11,24 @@ import {
 } from "./schedule";
 
 describe("schedule rules", () => {
+  it("builds the August default schedule dates from working weekdays", () => {
+    expect(buildDefaultScheduleEventDates(2026, 8)).toEqual({
+      expiryReview: "2026-08-06",
+      monthlyMeeting: "2026-08-11",
+      deepClean: "2026-08-13",
+      oralInventory: "2026-08-19",
+      injectionInventory: "2026-08-20",
+      staffTaskChange: "2026-08-26"
+    });
+
+    const schedule = buildMonthSchedule(2026, 8);
+    expect(schedule.days.find((day) => day.dateKey === "2026-08-06")?.events).toContainEqual({
+      date: "2026-08-06",
+      title: "유효기간조사/휴가금지",
+      type: "expiryReview"
+    });
+  });
+
   it("moves the fourth night pharmacist to the end on August 10 and every six weeks", () => {
     const base = ["윤주원", "정순미", "송유희", "김동신", "이상훈", "장소희"];
 
@@ -114,7 +133,7 @@ describe("schedule rules", () => {
     expect(schedule.days).toHaveLength(30);
     expect(schedule.events).toContainEqual({
       date: "2026-09-08",
-      title: "유효기간 조사일",
+      title: "유효기간조사/휴가금지",
       type: "expiryReview"
     });
     expect(schedule.days.find((day) => day.dateKey === "2026-09-15")?.events).toContainEqual({

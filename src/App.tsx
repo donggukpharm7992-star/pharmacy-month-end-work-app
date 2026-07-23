@@ -14,6 +14,7 @@ import appIcon from "./assets/app-icon.png";
 import palette from "./assets/palette.png";
 import { buildMonthDays, CalendarEvent, getHolidayName, isWeekend, toDateKey } from "./domain/calendar";
 import {
+  buildDefaultScheduleEventDates,
   buildMonthSchedule,
   buildScheduleWeeks,
   DEFAULT_NIGHT_PHARMACIST_TURN_DATE,
@@ -75,16 +76,18 @@ type AssignmentNameLists = {
   rotatingPharmacistNames: string[];
 };
 
+type ScheduleEventDatesByMonth = Record<string, ScheduleEventDates>;
+
 const legacyNightPharmacistOrder = ["윤주원", "정순미", "송유희", "이상훈", "장소희", "김동신"];
 const nightPharmacistAugustRuleMigrationKey = "pharmacy-app-night-pharmacist-august-2026-rule";
 
 const eventLabels: Record<EventDateKey, string> = {
-  expiryReview: "유효기간 조사일",
+  expiryReview: "유효기간조사/휴가금지",
   monthlyMeeting: "월례회의",
-  deepClean: "대청소",
-  oralInventory: "재고 조사_경구",
-  injectionInventory: "재고조사_주사",
-  staffTaskChange: "직원 업무 변경일"
+  deepClean: "대청소_휴가금지",
+  oralInventory: "재고조사_경구/휴가금지",
+  injectionInventory: "재고조사/주사-휴가금지",
+  staffTaskChange: "직원업무 변경"
 };
 
 function listToText(list: string[]) {
@@ -106,6 +109,26 @@ function positionTextToList(text: string) {
       .map((item) => item.trim())
       .filter(Boolean))
     .filter((line) => line.length > 0);
+}
+
+function readLegacyEventDatesByMonth(): ScheduleEventDatesByMonth {
+  try {
+    const stored = window.localStorage.getItem("pharmacy-app-event-dates");
+    if (stored == null) return {};
+    const legacyDates = JSON.parse(stored) as ScheduleEventDates;
+
+    return Object.entries(legacyDates).reduce<ScheduleEventDatesByMonth>((result, [type, date]) => {
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return result;
+      const monthKey = date.slice(0, 7);
+      result[monthKey] = {
+        ...result[monthKey],
+        [type]: date
+      };
+      return result;
+    }, {});
+  } catch {
+    return {};
+  }
 }
 
 function monthOffsetFrom2026(year: number, month: number) {
@@ -181,20 +204,29 @@ export default function App() {
     weekendPharmacists: defaultWeekendPharmacists
   });
 
-  const [eventDates, setEventDates] = useLocalStorageState<ScheduleEventDates>(
-    "pharmacy-app-event-dates",
-    {
-      expiryReview: "",
-      monthlyMeeting: "",
-      deepClean: "",
-      oralInventory: "",
-      injectionInventory: "",
-      staffTaskChange: ""
-    }
+  const initialEventDatesByMonth = useMemo(readLegacyEventDatesByMonth, []);
+  const [eventDatesByMonth, setEventDatesByMonth] = useLocalStorageState<ScheduleEventDatesByMonth>(
+    "pharmacy-app-event-dates-by-month",
+    initialEventDatesByMonth
   );
+  const eventDateMonthKey = `${year}-${String(month).padStart(2, "0")}`;
+  const defaultEventDates = useMemo(() => buildDefaultScheduleEventDates(year, month), [month, year]);
+  const eventDates = useMemo(
+    () => ({ ...defaultEventDates, ...(eventDatesByMonth[eventDateMonthKey] ?? {}) }),
+    [defaultEventDates, eventDateMonthKey, eventDatesByMonth]
+  );
+
+  function setEventDates(value: ScheduleEventDates) {
+    setEventDatesByMonth((current) => ({ ...current, [eventDateMonthKey]: value }));
+  }
+
   const [nightPharmacistTurnDate, setNightPharmacistTurnDate] = useLocalStorageState(
     "pharmacy-app-night-pharmacist-turn-date",
     DEFAULT_NIGHT_PHARMACIST_TURN_DATE
+  );
+  const [scheduleSubtitle, setScheduleSubtitle] = useLocalStorageState(
+    "pharmacy-app-schedule-subtitle",
+    "휴가자 연차 2명"
   );
 
   useEffect(() => {
@@ -374,6 +406,8 @@ export default function App() {
             setLists={setLists}
             eventDates={eventDates}
             setEventDates={setEventDates}
+            scheduleSubtitle={scheduleSubtitle}
+            setScheduleSubtitle={setScheduleSubtitle}
             nightPharmacistTurnDate={nightPharmacistTurnDate}
             setNightPharmacistTurnDate={setNightPharmacistTurnDate}
           />
@@ -458,6 +492,8 @@ function ScheduleTab({
   setLists,
   eventDates,
   setEventDates,
+  scheduleSubtitle,
+  setScheduleSubtitle,
   nightPharmacistTurnDate,
   setNightPharmacistTurnDate
 }: {
@@ -466,6 +502,8 @@ function ScheduleTab({
   setLists: (value: EditableLists) => void;
   eventDates: ScheduleEventDates;
   setEventDates: (value: ScheduleEventDates) => void;
+  scheduleSubtitle: string;
+  setScheduleSubtitle: (value: string) => void;
   nightPharmacistTurnDate: string;
   setNightPharmacistTurnDate: (value: string) => void;
 }) {
@@ -484,10 +522,19 @@ function ScheduleTab({
 
   return (
     <section className="print-page panel">
-      <div className="section-title row-title">
-        <div>
-          <h2>약제팀 근무표</h2>
-          <p>나이트 약사, 나이트 직원, 주말/공휴일 근무와 지정 일정을 주 단위로 표시합니다.</p>
+      <div className="section-title row-title schedule-section-title">
+        <div className="schedule-title-copy">
+          <h2>{schedule.year}년 {String(schedule.month).padStart(2, "0")}월 근무표</h2>
+          <p className="schedule-subtitle-display">({scheduleSubtitle})</p>
+          <p className="schedule-description no-print">나이트 약사, 나이트 직원, 주말/공휴일 근무와 지정 일정을 주 단위로 표시합니다.</p>
+          <label className="schedule-subtitle-editor no-print">
+            <span>근무표 부제</span>
+            <input
+              type="text"
+              value={scheduleSubtitle}
+              onChange={(event) => setScheduleSubtitle(event.currentTarget.value)}
+            />
+          </label>
         </div>
         <button type="button" className="quiet no-print" onClick={() => setShowLists((open) => !open)}>
           <Save size={16} /> 이름 리스트 편집
