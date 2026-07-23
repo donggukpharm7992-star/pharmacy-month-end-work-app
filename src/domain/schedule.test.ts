@@ -179,8 +179,8 @@ describe("schedule rules", () => {
       "박주영"
     ]);
     expect(schedule.days.find((day) => day.dateKey === "2026-09-12")?.upperMorningPharmacists).toEqual([
-      "약사3",
-      "약사1"
+      "약사1",
+      "김지혜"
     ]);
     expect(schedule.days.find((day) => day.dateKey === "2026-09-06")?.dayPharmacists).toEqual([
       "서윤석",
@@ -199,18 +199,29 @@ describe("schedule rules", () => {
     const saturdayHoliday = september.days.find((day) => day.dateKey === "2026-09-26");
     const firstSaturdayHoliday = october.days.find((day) => day.dateKey === "2026-10-03");
 
-    expect(weekdayHoliday?.upperMorningPharmacists).toEqual(["김연지"]);
+    expect(weekdayHoliday?.upperMorningPharmacists).toEqual(["이호연"]);
     expect(september.days.find((day) => day.dateKey === "2026-09-25")?.upperMorningPharmacists).toEqual([
-      "이호연"
+      "김수빈"
     ]);
     expect(saturdayHoliday?.morningStaff).toHaveLength(2);
     expect(saturdayHoliday?.lowerMorningStaff).toEqual([]);
     expect(saturdayHoliday?.dayPharmacists[1]).toBe("이승현");
-    expect(saturdayHoliday?.upperMorningPharmacists).toEqual(["김수빈", "박주영"]);
+    expect(saturdayHoliday?.upperMorningPharmacists).toEqual(["박주영", "김지혜"]);
     expect(firstSaturdayHoliday?.morningStaff).toHaveLength(2);
     expect(firstSaturdayHoliday?.lowerMorningStaff).toEqual([]);
     expect(firstSaturdayHoliday?.dayPharmacists).toEqual(["최윤영", "이승현"]);
     expect(firstSaturdayHoliday?.upperMorningPharmacists).toHaveLength(2);
+  });
+
+  it("does not assign the same pharmacist to full-day and half-day duty on the same date", () => {
+    const schedule = buildMonthSchedule(2026, 9);
+    const dutyDates = schedule.days.filter(
+      (day) => day.upperMorningPharmacists.length > 0 && day.dayPharmacists.length > 0
+    );
+
+    for (const day of dutyDates) {
+      expect(day.upperMorningPharmacists.filter((name) => day.dayPharmacists.includes(name))).toEqual([]);
+    }
   });
 
   it("builds the selected month schedule with event dates surfaced beside the table", () => {

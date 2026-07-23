@@ -184,22 +184,60 @@ function countFullDayPharmacistSlotsBefore(dateKey: string): number {
   return slots;
 }
 
-function countHalfDayPharmacistSlotsBefore(dateKey: string): number {
+function takeCycledExcluding(
+  names: string[],
+  start: number,
+  count: number,
+  excludedNames: string[]
+): { assigned: string[]; nextStart: number } {
+  if (names.length === 0) return { assigned: [], nextStart: start };
+  const excluded = new Set(excludedNames);
+  const assigned: string[] = [];
+  let cursor = start;
+  let inspected = 0;
+
+  while (assigned.length < count && inspected < names.length) {
+    const name = names[cursor % names.length];
+    cursor += 1;
+    inspected += 1;
+    if (!excluded.has(name)) assigned.push(name);
+  }
+
+  return { assigned, nextStart: cursor };
+}
+
+function assignHalfDayPharmacists(dateKey: string, names: string[]): string[] {
   const target = dateKeyToDate(dateKey);
   let current = dateKeyToDate(HALF_DAY_PHARMACIST_ROTATION_ANCHOR);
-  let slots = 0;
+  let cursor = 0;
+  const orderedNames = rotateFromName(names, "김지혜");
 
-  while (current < target) {
+  while (current <= target) {
     const currentKey = toDateKey(current.getFullYear(), current.getMonth() + 1, current.getDate());
-    if (current.getDay() === 6) {
-      slots += isFirstSaturday(currentKey) && !isHoliday(currentKey) ? 3 : 2;
-    } else if (isHoliday(currentKey)) {
-      slots += 1;
+    const weekday = current.getDay();
+    const holiday = isHoliday(currentKey);
+
+    if (weekday === 6 || holiday) {
+      const count = weekday === 6
+        ? isFirstSaturday(currentKey) && !holiday ? 3 : 2
+        : 1;
+      const fullDayNames = dayPharmacistNames(
+        currentKey,
+        weekday,
+        holiday,
+        current.getFullYear(),
+        current.getMonth() + 1,
+        names
+      );
+      const result = takeCycledExcluding(orderedNames, cursor, count, fullDayNames);
+      if (currentKey === dateKey) return result.assigned;
+      cursor = result.nextStart;
     }
+
     current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
   }
 
-  return slots;
+  return [];
 }
 
 function countWeekendStaffSlotsBefore(dateKey: string): number {
@@ -424,12 +462,7 @@ function upperMorningPharmacists(
 ): string[] {
   if (weekday !== 6 && !holiday) return [];
   if (dateKey >= HALF_DAY_PHARMACIST_ROTATION_ANCHOR) {
-    const orderedNames = rotateFromName(names, "김지혜");
-    const start = countHalfDayPharmacistSlotsBefore(dateKey);
-    const count = weekday === 6
-      ? isFirstSaturday(dateKey) && !holiday ? 3 : 2
-      : 1;
-    return takeCycled(orderedNames, start, count);
+    return assignHalfDayPharmacists(dateKey, names);
   }
   if (holiday && weekday !== 6) return takeCycled([...names].reverse(), 0, 1);
   const reversed = [...names].reverse();
