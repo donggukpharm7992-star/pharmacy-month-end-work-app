@@ -177,7 +177,7 @@ function escapeHtml(value: string) {
 function downloadExcelFile(filename: string, title: string, headers: string[], rows: string[][]) {
   const table = `
     <table border="1">
-      <caption>${escapeHtml(title)}</caption>
+      <caption style="font-size:20px;font-weight:800;padding:8px 0;">${escapeHtml(title)}</caption>
       <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
       <tbody>
         ${rows

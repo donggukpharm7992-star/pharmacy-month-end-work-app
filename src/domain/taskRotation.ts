@@ -48,7 +48,7 @@ export const staffAssignmentColumns: StaffAssignmentColumn[] = [
   { key: "lunchLate", label: "12:30-13:30", editable: true },
   { key: "afternoonTask", label: "13:30-17:00", editable: true },
   { key: "eveningTask", label: "18:00:00", editable: true },
-  { key: "deepCleanTask", label: "대청고", editable: true },
+  { key: "deepCleanTask", label: "대청소", editable: true },
   { key: "inventoryTask", label: "재고 조사/유효기간", editable: true },
   { key: "medicineRefillTask", label: "약 채우기", editable: true }
 ];
