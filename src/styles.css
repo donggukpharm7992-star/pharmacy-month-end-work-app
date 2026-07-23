@@ -1117,6 +1117,8 @@ textarea {
     box-sizing: border-box;
     min-height: 250mm;
     padding: 8mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
     break-after: page;
     page-break-after: always;
   }
@@ -1188,10 +1190,22 @@ textarea {
   }
 
   .print-document-sheet {
+    break-inside: avoid;
+    page-break-inside: avoid;
     break-after: page;
     page-break-after: always;
     box-sizing: border-box;
     padding: 8mm;
+  }
+
+  .global-checklist-page .monthly-checklist-table,
+  .global-checklist-page .notebook-source-table,
+  .checklist-page .monthly-checklist-table,
+  .checklist-page .notebook-source-table,
+  .notebook-checklist-page .notebook-source-table,
+  .equipment-document-table {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .print-document-sheet:last-child {
