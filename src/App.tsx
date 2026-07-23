@@ -80,6 +80,8 @@ type ScheduleEventDatesByMonth = Record<string, ScheduleEventDates>;
 
 const legacyNightPharmacistOrder = ["윤주원", "정순미", "송유희", "이상훈", "장소희", "김동신"];
 const nightPharmacistAugustRuleMigrationKey = "pharmacy-app-night-pharmacist-august-2026-rule";
+const legacyWeekendStaffOrder = ["김동희", "박종연", "김지은", "김지현", "강승원", "박지숙", "송현우", "김서훈"];
+const weekendStaffSeptemberRuleMigrationKey = "pharmacy-app-weekend-staff-september-2026-rule";
 
 const eventLabels: Record<EventDateKey, string> = {
   expiryReview: "유효기간조사/휴가금지",
@@ -245,6 +247,20 @@ export default function App() {
 
     window.localStorage.setItem(nightPharmacistAugustRuleMigrationKey, "applied");
   }, [lists.nightPharmacists, nightPharmacistTurnDate, setLists, setNightPharmacistTurnDate]);
+
+  useEffect(() => {
+    if (window.localStorage.getItem(weekendStaffSeptemberRuleMigrationKey) === "applied") return;
+
+    const usesLegacyOrder =
+      lists.weekendStaff.length === legacyWeekendStaffOrder.length &&
+      lists.weekendStaff.every((name, index) => name === legacyWeekendStaffOrder[index]);
+
+    if (usesLegacyOrder) {
+      setLists((current) => ({ ...current, weekendStaff: defaultWeekendStaff }));
+    }
+
+    window.localStorage.setItem(weekendStaffSeptemberRuleMigrationKey, "applied");
+  }, [lists.weekendStaff, setLists]);
 
   const [pharmacistCellEdits, setPharmacistCellEdits] = useLocalStorageState<Record<string, string>>(
     "pharmacy-app-pharmacist-assignment-edits",
@@ -643,10 +659,10 @@ function ScheduleTab({
             value={normalizeNightStaffPositions(lists.nightStaffPositions).map((row) => row.join("/")).join("\n")}
             onChange={(value) => setLists({ ...lists, nightStaffPositions: normalizeNightStaffPositions(positionTextToList(value)) })}
           />
-          <TextListEditor
-            title="직원 이름 리스트"
-            value={listToText(lists.weekendStaff)}
-            onChange={(value) => setLists({ ...lists, weekendStaff: textToList(value) })}
+          <NumberedNameListEditor
+            title="직원 이름 순번"
+            value={lists.weekendStaff}
+            onChange={(value) => setLists({ ...lists, weekendStaff: value })}
           />
           <TextListEditor
             title="주말 약사 이름 리스트"
@@ -1477,5 +1493,37 @@ function TextListEditor({
       <span>{title}</span>
       <textarea value={value} onChange={(event) => onChange(event.currentTarget.value)} />
     </label>
+  );
+}
+
+function NumberedNameListEditor({
+  title,
+  value,
+  onChange
+}: {
+  title: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
+  const names = Array.from({ length: 8 }, (_, index) => value[index] ?? "");
+
+  return (
+    <div className="text-list-editor">
+      <span>{title}</span>
+      {names.map((name, index) => (
+        <label className="row-title" key={index}>
+          <strong>{index + 1}번</strong>
+          <input
+            type="text"
+            value={name}
+            onChange={(event) => {
+              const next = [...names];
+              next[index] = event.currentTarget.value;
+              onChange(next);
+            }}
+          />
+        </label>
+      ))}
+    </div>
   );
 }

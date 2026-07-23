@@ -78,6 +78,17 @@ export const defaultWeekendStaff = [
   "박종연",
   "김지은",
   "김지현",
+  "박지숙",
+  "송현우",
+  "김서훈",
+  "심관석"
+];
+
+const AUGUST_2026_WEEKEND_STAFF = [
+  "김동희",
+  "박종연",
+  "김지은",
+  "김지현",
   "강승원",
   "박지숙",
   "송현우",
@@ -111,6 +122,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const DEFAULT_NIGHT_PHARMACIST_TURN_DATE = "2026-08-10";
 const NIGHT_PHARMACIST_PAIR_ANCHOR = "2026-07-29";
 const NIGHT_STAFF_POSITION_ANCHORS = ["2026-09-01", "2026-08-30", "2026-08-31"];
+const WEEKEND_STAFF_ROTATION_ANCHOR = "2026-09-05";
+const WEEKEND_STAFF_ROTATION_START_INDEX = 1;
+const HOLIDAY_STAFF_ROTATION_ANCHOR = "2026-09-24";
+const HOLIDAY_STAFF_ROTATION_START_INDEX = 6;
 
 function diffDays(dateKey: string, anchorKey: string): number {
   const date = dateKeyToDate(dateKey).getTime();
@@ -133,6 +148,46 @@ function modulo(value: number, divisor: number): number {
 function takeCycled<T>(items: T[], start: number, count: number): T[] {
   if (items.length === 0) return [];
   return Array.from({ length: count }, (_, offset) => items[(start + offset) % items.length]);
+}
+
+function countWeekendStaffSlotsBefore(dateKey: string): number {
+  const target = dateKeyToDate(dateKey);
+  let current = dateKeyToDate(WEEKEND_STAFF_ROTATION_ANCHOR);
+  let slots = 0;
+
+  while (current < target) {
+    if (current.getDay() === 6) slots += 2;
+    if (current.getDay() === 0) slots += 1;
+    current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
+  }
+
+  return slots;
+}
+
+function assignWeekendDutyStaff(dateKey: string, names: string[], count: number): string[] {
+  if (names.length === 0) return [];
+  const start = WEEKEND_STAFF_ROTATION_START_INDEX + countWeekendStaffSlotsBefore(dateKey);
+  return takeCycled(names, modulo(start, names.length), count);
+}
+
+function countHolidayStaffSlotsBefore(dateKey: string): number {
+  const target = dateKeyToDate(dateKey);
+  let current = dateKeyToDate(HOLIDAY_STAFF_ROTATION_ANCHOR);
+  let slots = 0;
+
+  while (current < target) {
+    const currentKey = toDateKey(current.getFullYear(), current.getMonth() + 1, current.getDate());
+    if (isHoliday(currentKey)) slots += 1;
+    current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
+  }
+
+  return slots;
+}
+
+function assignHolidayDutyStaff(dateKey: string, names: string[]): string[] {
+  if (names.length === 0) return [];
+  const start = HOLIDAY_STAFF_ROTATION_START_INDEX + countHolidayStaffSlotsBefore(dateKey);
+  return takeCycled(names, modulo(start, names.length), 1);
 }
 
 function nthWorkingWeekdayDateKey(
@@ -303,7 +358,7 @@ export function buildMonthSchedule(
   const weekendPharmacists = options.weekendPharmacists ?? defaultWeekendPharmacists;
   const eventDates = options.eventDates ?? buildDefaultScheduleEventDates(year, month);
   const events = [...buildEvents(eventDates), ...buildNightPharmacistTurnEvents(year, month, nightPharmacistTurnDate)];
-  let weekendStaffCursor = 0;
+  let legacyWeekendStaffCursor = 0;
 
   const days: ScheduleDay[] = Array.from({ length: daysInMonth(year, month) }, (_, index) => {
     const day = index + 1;
@@ -312,9 +367,35 @@ export function buildMonthSchedule(
     const holiday = isHoliday(dateKey);
     const holidayName = getHolidayName(dateKey);
     const dayEvents = events.filter((event) => event.date === dateKey);
-    const morningStaff = weekday === 6 ? takeCycled(weekendStaff, weekendStaffCursor, 2) : [];
-    if (morningStaff.length > 0) weekendStaffCursor += morningStaff.length;
-    const lowerMorningStaff = weekday === 0 || holiday ? takeCycled(weekendStaff, weekendStaffCursor++, 1) : [];
+    let morningStaff: string[] = [];
+    let lowerMorningStaff: string[] = [];
+
+    if (year === 2026 && month === 8) {
+      morningStaff = weekday === 6
+        ? takeCycled(AUGUST_2026_WEEKEND_STAFF, legacyWeekendStaffCursor, 2)
+        : [];
+      legacyWeekendStaffCursor += morningStaff.length;
+
+      if (weekday === 0 || holiday) {
+        const assigned = takeCycled(AUGUST_2026_WEEKEND_STAFF, legacyWeekendStaffCursor, 1);
+        legacyWeekendStaffCursor += 1;
+        lowerMorningStaff = dateKey === "2026-08-17" ? ["김지현"] : assigned;
+      }
+    } else if (dateKey >= "2026-09-01") {
+      morningStaff = weekday === 6 ? assignWeekendDutyStaff(dateKey, weekendStaff, 2) : [];
+      lowerMorningStaff = holiday
+        ? assignHolidayDutyStaff(dateKey, weekendStaff)
+        : weekday === 0
+          ? assignWeekendDutyStaff(dateKey, weekendStaff, 1)
+          : [];
+    } else {
+      morningStaff = weekday === 6 ? takeCycled(weekendStaff, legacyWeekendStaffCursor, 2) : [];
+      legacyWeekendStaffCursor += morningStaff.length;
+      if (weekday === 0 || holiday) {
+        lowerMorningStaff = takeCycled(weekendStaff, legacyWeekendStaffCursor, 1);
+        legacyWeekendStaffCursor += 1;
+      }
+    }
 
     return {
       dateKey,

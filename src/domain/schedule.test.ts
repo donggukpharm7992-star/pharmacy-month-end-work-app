@@ -118,6 +118,37 @@ describe("schedule rules", () => {
     expect(schedule.days.every((day) => day.nightStaff.length === 3)).toBe(true);
   });
 
+  it("keeps the August weekend staff schedule and fixes August 17 to Kim Jihyeon", () => {
+    const schedule = buildMonthSchedule(2026, 8);
+
+    expect(schedule.days.find((day) => day.dateKey === "2026-08-01")?.morningStaff).toEqual(["김동희", "박종연"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-08-02")?.lowerMorningStaff).toEqual(["김지은"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-08-17")?.lowerMorningStaff).toEqual(["김지현"]);
+  });
+
+  it("rotates weekend and holiday staff from the September anchors", () => {
+    const schedule = buildMonthSchedule(2026, 9);
+
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-05")?.morningStaff).toEqual(["박종연", "김지은"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-06")?.lowerMorningStaff).toEqual(["김지현"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-12")?.morningStaff).toEqual(["박지숙", "송현우"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-13")?.lowerMorningStaff).toEqual(["김서훈"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-19")?.morningStaff).toEqual(["심관석", "김동희"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-20")?.lowerMorningStaff).toEqual(["박종연"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-24")?.lowerMorningStaff).toEqual(["김서훈"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-25")?.lowerMorningStaff).toEqual(["심관석"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-26")?.lowerMorningStaff).toEqual(["김동희"]);
+  });
+
+  it("uses edited staff names without changing their numbered rotation positions", () => {
+    const names = ["직원1", "직원2", "직원3", "직원4", "직원5", "직원6", "직원7", "직원8"];
+    const schedule = buildMonthSchedule(2026, 9, { weekendStaff: names });
+
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-05")?.morningStaff).toEqual(["직원2", "직원3"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-06")?.lowerMorningStaff).toEqual(["직원4"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-24")?.lowerMorningStaff).toEqual(["직원7"]);
+  });
+
   it("builds the selected month schedule with event dates surfaced beside the table", () => {
     const schedule = buildMonthSchedule(2026, 9, {
       eventDates: {
