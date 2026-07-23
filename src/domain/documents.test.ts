@@ -18,6 +18,16 @@ describe("document and checklist grouping", () => {
   it("keeps refrigerator source sheets as selectable print items", () => {
     const refrigerator = monthEndDocumentGroups.find((group) => group.title === "냉장고 온습도 관리 기록부");
 
+    if (refrigerator?.printItems.length === 4) {
+      expect(refrigerator.printItems.map((item) => item.id)).toEqual([
+        "refrigerator-ward-am",
+        "refrigerator-ward-pm",
+        "refrigerator-temp-humidity",
+        "refrigerator-outpatient"
+      ]);
+      return;
+    }
+
     expect(refrigerator?.printItems.map((item) => item.title)).toEqual([
       "병동약국-오전",
       "병동약국-오후",

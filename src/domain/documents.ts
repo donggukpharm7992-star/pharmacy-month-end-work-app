@@ -199,6 +199,26 @@ export const monthEndDocumentGroups: MonthEndDocumentGroup[] = [
   }
 ];
 
+const refrigeratorGroup = monthEndDocumentGroups[0];
+refrigeratorGroup.printItems = refrigeratorGroup.printItems
+  .filter((item) => item.id !== "refrigerator-prepare-am" && item.id !== "refrigerator-prepare-pm");
+for (const item of refrigeratorGroup.printItems.filter((item) => item.id === "refrigerator-ward-am" || item.id === "refrigerator-ward-pm")) {
+  item.columns = [
+    "점검시간",
+    "주사약냉장고(1)",
+    "주사약냉장고(2)",
+    "주사약냉장고(3)",
+    "주사약냉장고(4)",
+    "외용제",
+    "외용제냉동실",
+    "불출장",
+    "제제실(냉장)",
+    "제제실(냉동)",
+    "적합/부적합",
+    "점검자"
+  ];
+}
+
 export const checklistPrintGroups: PrintableGroup[] = [
   { title: "외용제 업무", sections: ["외용제"], orientation: "landscape" },
   { title: "추/긴 업무 + ATC 업무", sections: ["추/긴 업무", "ATC 업무"], orientation: "landscape" },
