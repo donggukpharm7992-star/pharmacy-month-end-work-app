@@ -1631,15 +1631,17 @@ textarea {
 
   .notebook-checklist-page {
     box-sizing: border-box;
-    padding: 14mm 8mm;
+    padding: 20mm 8mm 6mm;
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
   .notebook-source-table {
-    height: 220mm;
+    height: 208mm;
     width: 100%;
     table-layout: fixed;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .notebook-source-table th,
