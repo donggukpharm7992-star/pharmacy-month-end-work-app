@@ -496,43 +496,6 @@ th {
   font-weight: 800;
 }
 
-.numbered-name-row {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 30px 30px;
-  align-items: center;
-  gap: 5px;
-}
-
-.numbered-name-row strong {
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.numbered-name-row input {
-  min-width: 0;
-}
-
-.icon-action-button {
-  display: inline-grid;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: #fff;
-  color: var(--blue);
-}
-
-.icon-action-button.danger {
-  color: #a84837;
-}
-
-.numbered-name-add {
-  justify-content: center;
-  margin-top: 2px;
-}
-
 input,
 textarea {
   width: 100%;

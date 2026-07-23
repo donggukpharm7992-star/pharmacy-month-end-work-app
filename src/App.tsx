@@ -5,10 +5,8 @@ import {
   ChevronRight,
   ClipboardList,
   FileText,
-  Plus,
   Printer,
   Save,
-  Trash2,
   Users
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -775,10 +773,10 @@ function ScheduleTab({
             value={normalizeNightStaffPositions(lists.nightStaffPositions).map((row) => row.join("/")).join("\n")}
             onChange={(value) => setLists({ ...lists, nightStaffPositions: normalizeNightStaffPositions(positionTextToList(value)) })}
           />
-          <NumberedNameListEditor
+          <TextListEditor
             title="직원 이름 순번"
-            value={lists.weekendStaff}
-            onChange={(value) => setLists({ ...lists, weekendStaff: value })}
+            value={listToText(lists.weekendStaff)}
+            onChange={(value) => setLists({ ...lists, weekendStaff: textToList(value) })}
           />
           <TextListEditor
             title="주말 약사 이름 리스트"
@@ -1609,70 +1607,5 @@ function TextListEditor({
       <span>{title}</span>
       <textarea value={value} onChange={(event) => onChange(event.currentTarget.value)} />
     </label>
-  );
-}
-
-function NumberedNameListEditor({
-  title,
-  value,
-  onChange
-}: {
-  title: string;
-  value: string[];
-  onChange: (value: string[]) => void;
-}) {
-  const insertName = (index: number) => {
-    const next = [...value];
-    next.splice(index, 0, "");
-    onChange(next);
-  };
-
-  const removeName = (index: number) => {
-    onChange(value.filter((_, itemIndex) => itemIndex !== index));
-  };
-
-  return (
-    <div className="text-list-editor">
-      <span>{title}</span>
-      {value.map((name, index) => (
-        <div className="numbered-name-row" key={index}>
-          <strong>{index + 1}번</strong>
-          <input
-            type="text"
-            value={name}
-            onChange={(event) => {
-              const next = [...value];
-              next[index] = event.currentTarget.value;
-              onChange(next);
-            }}
-          />
-          <button
-            type="button"
-            className="icon-action-button"
-            title={`${index + 1}번 다음에 이름 추가`}
-            aria-label={`${index + 1}번 다음에 이름 추가`}
-            onClick={() => insertName(index + 1)}
-          >
-            <Plus size={15} />
-          </button>
-          <button
-            type="button"
-            className="icon-action-button danger"
-            title={`${index + 1}번 이름 삭제`}
-            aria-label={`${index + 1}번 이름 삭제`}
-            onClick={() => removeName(index)}
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        className="secondary-button numbered-name-add"
-        onClick={() => insertName(value.length)}
-      >
-        <Plus size={15} /> 이름 추가
-      </button>
-    </div>
   );
 }
