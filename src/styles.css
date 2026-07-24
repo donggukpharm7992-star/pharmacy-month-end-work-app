@@ -382,6 +382,9 @@ th {
 .schedule-week-table th,
 .schedule-week-table td {
   min-width: 104px;
+  border-color: #66717a;
+  border-width: 1.5px;
+  font-size: 14px;
   text-align: center;
 }
 
@@ -430,7 +433,15 @@ th {
 
 .schedule-event-row td {
   min-height: 42px;
+  color: #111111;
+  font-size: 14px;
+  font-weight: 800;
   vertical-align: top;
+}
+
+.schedule-event-row .schedule-chip {
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .weekend-duty-cell {
@@ -1192,8 +1203,10 @@ textarea {
     min-width: 0;
     height: auto;
     padding: 1px;
-    font-size: 7px;
-    line-height: 1.05;
+    border-color: #3f474d;
+    border-width: 1px;
+    font-size: 9px;
+    line-height: 1.1;
   }
 
   .schedule-print-page .schedule-week-table .time-col {
@@ -1209,8 +1222,9 @@ textarea {
     margin: 0 auto;
     padding: 1px 2px;
     border-radius: 2px;
-    font-size: 5px;
-    line-height: 1;
+    font-size: 7px;
+    font-weight: 800;
+    line-height: 1.1;
   }
 
   .schedule-cell-print-value {

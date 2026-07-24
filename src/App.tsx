@@ -827,7 +827,6 @@ function ScheduleTab({
   const rows = [
     { id: "nightPharmacists", label: "17:00-익일08:00", get: (day: (typeof schedule.days)[number]) => day.nightPharmacists.join("/") },
     { id: "nightStaff", label: "20:00-익일07:00", get: (day: (typeof schedule.days)[number]) => day.nightStaff.join("/") },
-    { id: "nightCategory", label: "나이트 업무 구분", get: () => "" },
     { id: "morningStaff", label: "07:15-11:15", get: (day: (typeof schedule.days)[number]) => day.morningStaff.join("/") },
     { id: "dayPharmacists", label: "08:00-17:00", get: (day: (typeof schedule.days)[number]) => day.dayPharmacists.join("/") },
     { id: "upperMorningPharmacists", label: "08:00-12:00 약사", get: (day: (typeof schedule.days)[number]) => day.upperMorningPharmacists.join("/") },
@@ -912,7 +911,7 @@ function ScheduleTab({
                       const editKey = day ? scheduleCellEditKey(day.dateKey, row.id) : "";
                       const hasManualEdit = Boolean(day) && Object.prototype.hasOwnProperty.call(scheduleCellEdits, editKey);
                       const value = hasManualEdit ? scheduleCellEdits[editKey] : generatedValue;
-                      const editable = Boolean(day) && row.id !== "nightCategory" && (Boolean(generatedValue) || hasManualEdit);
+                      const editable = Boolean(day) && (Boolean(generatedValue) || hasManualEdit);
                       const weekendClass = value && day?.weekday === 6
                         ? "blue-day weekend-duty-cell"
                         : value && day?.weekday === 0
