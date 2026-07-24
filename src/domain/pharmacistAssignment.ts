@@ -41,6 +41,7 @@ export type PharmacistAssignmentOptions = {
   lunchRotatingNames?: string[];
   morningRotatingNames?: string[];
   afternoonRotatingNames?: string[];
+  anticancerSubNames?: string[];
 };
 
 export const pharmacistAssignmentColumns: PharmacistAssignmentColumn[] = [
@@ -485,27 +486,50 @@ function rotatePharmacistTaskValues(
   const lunchNames = options.lunchRotatingNames?.length
     ? options.lunchRotatingNames
     : defaultLunchRotatingPharmacistNames;
-  const temporarySubName = year === 2026 && month >= 7 && month <= 9 ? "오아라" : year === 2026 && month >= 10 ? "김수빈" : "";
-  const temporaryFixedNames = new Set(temporarySubName ? [temporarySubName] : []);
+  const defaultSubNames =
+    year === 2026 && month >= 7 && month <= 9
+      ? ["오아라"]
+      : year === 2026 && month >= 10
+        ? ["김수빈"]
+        : [];
+  const temporarySubNames = options.anticancerSubNames ?? defaultSubNames;
+  const temporaryFixedNames = new Set(temporarySubNames);
   const nextRows = rows.map((row) => ({ ...row, values: { ...row.values } }));
 
-  if (temporarySubName === "오아라") {
-    const ohAra = nextRows.find((row) => pharmacistBaseName(row.values.name) === "오아라");
-    const kimSubin = nextRows.find((row) => pharmacistBaseName(row.values.name) === "김수빈");
-    if (ohAra && kimSubin) {
-      const ohAraTasks = taskPayload(ohAra.values);
-      ohAra.values = applyTaskPayload(ohAra.values, taskPayload(kimSubin.values));
-      kimSubin.values = applyTaskPayload(kimSubin.values, ohAraTasks);
-    }
+  const canonicalSubRow = nextRows.find(
+    (row) => pharmacistBaseName(row.values.name) === "김수빈"
+  );
+  const selectedSubRows = temporarySubNames
+    .map((name) => nextRows.find((row) => pharmacistBaseName(row.values.name) === name))
+    .filter((row): row is (typeof nextRows)[number] => Boolean(row));
+  if (canonicalSubRow && selectedSubRows.length > 0 && !selectedSubRows.includes(canonicalSubRow)) {
+    const canonicalTasks = taskPayload(canonicalSubRow.values);
+    const firstSubTasks = taskPayload(selectedSubRows[0].values);
+    selectedSubRows.forEach((row) => {
+      row.values = applyTaskPayload(row.values, canonicalTasks);
+    });
+    canonicalSubRow.values = applyTaskPayload(canonicalSubRow.values, firstSubTasks);
+  } else if (canonicalSubRow && selectedSubRows.length > 1) {
+    const canonicalTasks = taskPayload(canonicalSubRow.values);
+    selectedSubRows.forEach((row) => {
+      row.values = applyTaskPayload(row.values, canonicalTasks);
+    });
   }
 
   nextRows.forEach((row) => {
     const baseName = pharmacistBaseName(row.values.name);
-    if (baseName === "오아라") {
-      row.values.duty = temporarySubName === "오아라" ? "항암제 서브(2607~)" : "";
-    }
-    if (baseName === "김수빈") {
-      row.values.duty = temporarySubName === "김수빈" ? "항암제 서브(2610~)" : "항암제 담당 휴가 시 항암제 메인 업무 처리";
+    if (temporaryFixedNames.has(baseName)) {
+      const subDuty =
+        baseName === "오아라"
+          ? "항암제 서브(2607~)"
+          : baseName === "김수빈"
+            ? "항암제 서브(2610~)"
+            : "항암제 서브";
+      row.values.duty = `${subDuty} / 항암제 담당 휴가 시 항암제 메인 업무 처리`;
+    } else if (baseName === "오아라") {
+      row.values.duty = "";
+    } else if (baseName === "김수빈") {
+      row.values.duty = "항암제 담당 휴가 시 항암제 메인 업무 처리";
     }
   });
 

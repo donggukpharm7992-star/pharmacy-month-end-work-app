@@ -118,8 +118,23 @@ describe("pharmacist assignment template", () => {
     expect(ohAra?.cells.early.value).toContain("항암제");
     expect(ohAra?.cells.morningMain.value).toBe("항암제 조제");
     expect(ohAra?.cells.afternoonA.value).toContain("항암제/원내제제");
-    expect(ohAra?.cells.duty.value).toBe("항암제 서브(2607~)");
+    expect(ohAra?.cells.duty.value).toBe(
+      "항암제 서브(2607~) / 항암제 담당 휴가 시 항암제 메인 업무 처리"
+    );
     expect(kimSubin?.cells.morningMain.value).not.toBe("항암제 조제");
+  });
+
+  it("fixes a selected anticancer sub pharmacist and removes them from the rotating pool", () => {
+    const september = buildPharmacistAssignment(2026, 9, {
+      anticancerSubNames: ["박혜정"]
+    });
+    const parkHyejung = september.rows.find((row) => row.cells.name.value === "박혜정");
+
+    expect(parkHyejung?.cells.morningMain.value).toBe("항암제 조제");
+    expect(parkHyejung?.cells.afternoonA.value).toContain("항암제/원내제제");
+    expect(parkHyejung?.cells.duty.value).toBe(
+      "항암제 서브 / 항암제 담당 휴가 시 항암제 메인 업무 처리"
+    );
   });
 
   it("keeps Shin Jinyoung on fixed ASP work without anticancer afternoon work", () => {

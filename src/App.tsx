@@ -78,6 +78,14 @@ type AssignmentNameLists = {
   rotatingPharmacistNames: string[];
 };
 
+type AnticancerSubPeriod = {
+  name: string;
+  startYear: number;
+  startMonth: number;
+  endYear?: number;
+  endMonth?: number;
+};
+
 type ScheduleEventDatesByMonth = Record<string, ScheduleEventDates>;
 
 const legacyNightPharmacistOrder = ["윤주원", "정순미", "송유희", "이상훈", "장소희", "김동신"];
@@ -150,6 +158,25 @@ function effectivePharmacistNames(
     })
     .sort(([left], [right]) => left.localeCompare(right));
   return applicable.at(-1)?.[1] ?? defaultNames;
+}
+
+function activeAnticancerSubNames(
+  periods: AnticancerSubPeriod[],
+  year: number,
+  month: number
+) {
+  const current = monthSerial(year, month);
+  return periods
+    .filter((period) => {
+      const start = monthSerial(period.startYear, period.startMonth);
+      const automaticEnd = start + 2;
+      const manualEnd =
+        period.endYear && period.endMonth
+          ? monthSerial(period.endYear, period.endMonth)
+          : automaticEnd;
+      return start <= current && current <= Math.min(automaticEnd, manualEnd);
+    })
+    .map((period) => period.name);
 }
 
 function positionTextToList(text: string) {
@@ -465,6 +492,13 @@ export default function App() {
     "pharmacy-app-pharmacist-name-changes",
     {}
   );
+  const [anticancerSubPeriods, setAnticancerSubPeriods] = useLocalStorageState<AnticancerSubPeriod[]>(
+    "pharmacy-app-anticancer-sub-periods",
+    [
+      { name: "오아라", startYear: 2026, startMonth: 7 },
+      { name: "김수빈", startYear: 2026, startMonth: 10 }
+    ]
+  );
   const [mergeBlankPharmacistCells, setMergeBlankPharmacistCells] = useLocalStorageState(
     "pharmacy-app-pharmacist-merge-blank-cells",
     true
@@ -584,14 +618,15 @@ export default function App() {
   );
   const pharmacistAssignment = useMemo(
     () => buildPharmacistAssignment(year, month, {
-      pharmacistNames: effectivePharmacistNames(assignmentNameLists.pharmacistNames, pharmacistNameChanges, year, month),
+      pharmacistNames: effectivePharmacistNames(defaultPharmacistNameList, pharmacistNameChanges, year, month),
       fixedNames: assignmentNameLists.fixedPharmacistNames,
-      rotatingNames: assignmentNameLists.rotatingPharmacistNames
+      rotatingNames: assignmentNameLists.rotatingPharmacistNames,
+      anticancerSubNames: activeAnticancerSubNames(anticancerSubPeriods, year, month)
     }),
     [
       assignmentNameLists.fixedPharmacistNames,
-      assignmentNameLists.pharmacistNames,
       assignmentNameLists.rotatingPharmacistNames,
+      anticancerSubPeriods,
       pharmacistNameChanges,
       month,
       year
@@ -723,13 +758,47 @@ export default function App() {
             setPharmacistCellEdits={setPharmacistCellEdits}
             assignmentNameLists={assignmentNameLists}
             setAssignmentNameLists={setAssignmentNameLists}
-            pharmacistNamesForMonth={effectivePharmacistNames(assignmentNameLists.pharmacistNames, pharmacistNameChanges, year, month)}
+            pharmacistNamesForMonth={effectivePharmacistNames(defaultPharmacistNameList, pharmacistNameChanges, year, month)}
+            anticancerSubNames={activeAnticancerSubNames(anticancerSubPeriods, year, month)}
+            onAnticancerSubToggle={(name, checked) => {
+              const currentSerial = monthSerial(year, month);
+              setAnticancerSubPeriods((current) => {
+                if (checked) {
+                  return [
+                    ...current,
+                    { name, startYear: year, startMonth: month }
+                  ];
+                }
+
+                return current.flatMap((period) => {
+                  const startSerial = monthSerial(period.startYear, period.startMonth);
+                  const automaticEnd = startSerial + 2;
+                  const endSerial =
+                    period.endYear && period.endMonth
+                      ? monthSerial(period.endYear, period.endMonth)
+                      : automaticEnd;
+                  if (
+                    period.name !== name ||
+                    currentSerial < startSerial ||
+                    currentSerial > Math.min(automaticEnd, endSerial)
+                  ) {
+                    return [period];
+                  }
+                  if (startSerial === currentSerial) return [];
+                  const previous = new Date(year, month - 2, 1);
+                  return [{
+                    ...period,
+                    endYear: previous.getFullYear(),
+                    endMonth: previous.getMonth() + 1
+                  }];
+                });
+              });
+            }}
             onPharmacistNamesChange={(names) => {
               setPharmacistNameChanges({
                 ...pharmacistNameChanges,
                 [`${year}-${String(month).padStart(2, "0")}`]: names
               });
-              setAssignmentNameLists({ ...assignmentNameLists, pharmacistNames: names });
             }}
             mergeBlankPharmacistCells={mergeBlankPharmacistCells}
             setMergeBlankPharmacistCells={setMergeBlankPharmacistCells}
@@ -1028,6 +1097,8 @@ function AssignmentTab({
   setAssignmentNameLists,
   pharmacistNamesForMonth,
   onPharmacistNamesChange,
+  anticancerSubNames,
+  onAnticancerSubToggle,
   mergeBlankPharmacistCells,
   setMergeBlankPharmacistCells
 }: {
@@ -1043,6 +1114,8 @@ function AssignmentTab({
   setAssignmentNameLists: (value: AssignmentNameLists) => void;
   pharmacistNamesForMonth: string[];
   onPharmacistNamesChange: (names: string[]) => void;
+  anticancerSubNames: string[];
+  onAnticancerSubToggle: (name: string, checked: boolean) => void;
   mergeBlankPharmacistCells: boolean;
   setMergeBlankPharmacistCells: (value: boolean) => void;
 }) {
@@ -1364,6 +1437,27 @@ function AssignmentTab({
                 })
               }
             />
+            <div className="text-list-editor anticancer-sub-group">
+              <strong>항암제 서브 약사 그룹</strong>
+              <div className="anticancer-sub-options">
+                {pharmacistNamesForMonth.map((name) => {
+                  const baseName = name.split("/")[0].trim();
+                  return (
+                    <label key={name}>
+                      <input
+                        type="checkbox"
+                        checked={anticancerSubNames.includes(baseName)}
+                        onChange={(event) =>
+                          onAnticancerSubToggle(baseName, event.currentTarget.checked)
+                        }
+                      />
+                      <span>{baseName}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <small>체크한 달부터 3개월간 업무를 고정하고 순환에서 제외합니다.</small>
+            </div>
           </div>
         </div>
       )}
