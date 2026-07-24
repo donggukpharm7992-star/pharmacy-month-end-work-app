@@ -384,7 +384,7 @@ th {
   min-width: 104px;
   border-color: #66717a;
   border-width: 1.5px;
-  font-size: 14px;
+  font-size: 16px;
   text-align: center;
 }
 
@@ -398,7 +398,7 @@ th {
 }
 
 .schedule-week-table td.three-names {
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0;
   padding-inline: 2px;
 }
@@ -1205,7 +1205,7 @@ textarea {
     padding: 1px;
     border-color: #3f474d;
     border-width: 1px;
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1.1;
   }
 
@@ -1228,7 +1228,13 @@ textarea {
   }
 
   .schedule-cell-print-value {
-    display: inline;
+    display: block;
+    width: 100%;
+    color: #000000;
+    font: inherit;
+    line-height: inherit;
+    text-align: center;
+    white-space: pre-wrap;
   }
 
   .printing-calendar .panel {
@@ -1774,7 +1780,7 @@ textarea {
   }
 
   .schedule-week-table td.three-names {
-    font-size: 7px;
+    font-size: 9px;
     padding-inline: 1px;
   }
 
