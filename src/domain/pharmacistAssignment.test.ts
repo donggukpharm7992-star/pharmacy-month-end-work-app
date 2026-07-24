@@ -162,6 +162,18 @@ describe("pharmacist assignment template", () => {
     ).toBe(true);
   });
 
+  it("alternates Kim Jihye and Kim Yeonji 12:30-1:30 work from the September anchor", () => {
+    for (let month = 9; month <= 12; month += 1) {
+      const assignment = buildPharmacistAssignment(2026, month);
+      const kimJihye = assignment.rows.find((row) => row.cells.name.value === "김지혜");
+      const kimYeonji = assignment.rows.find((row) => row.cells.name.value === "김연지");
+      const swapped = (month - 9) % 2 !== 0;
+
+      expect(kimJihye?.cells.lunchLate.value).toBe(swapped ? "외래/퇴원" : "7988/처방감사");
+      expect(kimYeonji?.cells.lunchLate.value).toBe(swapped ? "7988/처방감사" : "외래/퇴원");
+    }
+  });
+
   it("never rotates NST handover work and keeps NST clinical work only with Park Hyunyoung", () => {
     for (let month = 9; month <= 12; month += 1) {
       const assignment = buildPharmacistAssignment(2026, month);

@@ -622,6 +622,14 @@ function rotatePharmacistTaskValues(
     parkHyunyoung.values.afternoonB = "";
   }
 
+  const kimJihye = nextRows.find((row) => pharmacistBaseName(row.values.name) === "김지혜");
+  const kimYeonji = nextRows.find((row) => pharmacistBaseName(row.values.name) === "김연지");
+  const swapFixedLunchWork = ((year - 2026) * 12 + (month - 9)) % 2 !== 0;
+  if (kimJihye && kimYeonji) {
+    kimJihye.values.lunchLate = swapFixedLunchWork ? "외래/퇴원" : "7988/처방감사";
+    kimYeonji.values.lunchLate = swapFixedLunchWork ? "7988/처방감사" : "외래/퇴원";
+  }
+
   const afternoonOutpatientHolder = nextRows.find((row) =>
     /외래약국/.test(`${row.values.lunchLate} ${row.values.afternoonA} ${row.values.afternoonB}`)
   );

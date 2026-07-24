@@ -99,6 +99,7 @@ const pharmacistFixedWorkGroupMigrationKey = "pharmacy-app-pharmacist-fixed-work
 const legacyPharmacistFixedWorkGroup = ["김옥선", "송은호", "최윤영", "김지혜", "신진영", "오아라", "이정화", "안혜정", "김연지", "이호연", "박윤선"];
 const pharmacistRotatingGroupMigrationKey = "pharmacy-app-pharmacist-rotating-group-v2";
 const pharmacistParkHyunyoungRuleMigrationKey = "pharmacy-app-pharmacist-park-hyunyoung-rules-v1";
+const pharmacistFixedLunchPairMigrationKey = "pharmacy-app-pharmacist-fixed-lunch-pair-v1";
 const legacyPharmacistRotatingGroup = ["이지은", "송예리", "박혜정", "김경원", "김수빈", "박주영 / (~5시 30분)"];
 const staffTaskDetailMigrationKey = "pharmacy-app-staff-task-detail-swap";
 const legacyStaffTaskCellValues: Record<string, string> = {
@@ -415,6 +416,16 @@ export default function App() {
       Object.fromEntries(Object.entries(current).filter(([key]) => !resetKeys.has(key)))
     );
     window.localStorage.setItem(pharmacistParkHyunyoungRuleMigrationKey, "applied");
+  }, [setPharmacistCellEdits]);
+
+  useEffect(() => {
+    if (window.localStorage.getItem(pharmacistFixedLunchPairMigrationKey) === "applied") return;
+
+    const resetKeys = new Set(["kim-jihye:lunchLate", "kim-yeonji:lunchLate"]);
+    setPharmacistCellEdits((current) =>
+      Object.fromEntries(Object.entries(current).filter(([key]) => !resetKeys.has(key)))
+    );
+    window.localStorage.setItem(pharmacistFixedLunchPairMigrationKey, "applied");
   }, [setPharmacistCellEdits]);
 
   useEffect(() => {
