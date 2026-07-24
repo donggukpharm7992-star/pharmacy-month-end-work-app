@@ -143,6 +143,35 @@ describe("pharmacist assignment template", () => {
     }
   });
 
+  it("anchors September afternoon outpatient pharmacy work to Lee Jieun", () => {
+    const september = buildPharmacistAssignment(2026, 9);
+    const leeJieun = september.rows.find((row) => row.cells.name.value === "이지은");
+
+    expect(
+      `${leeJieun?.cells.lunchLate.value} ${leeJieun?.cells.afternoonA.value} ${leeJieun?.cells.afternoonB.value}`
+    ).toContain("외래약국");
+  });
+
+  it("never rotates NST handover work and keeps NST clinical work only with Park Hyunyoung", () => {
+    for (let month = 9; month <= 12; month += 1) {
+      const assignment = buildPharmacistAssignment(2026, month);
+      const people = assignment.rows.filter((row) => row.kind === "person");
+
+      people.forEach((row) => {
+        const allWork = pharmacistAssignmentColumns
+          .map((column) => row.cells[column.key].value)
+          .join(" ");
+        expect(allWork).not.toContain("NST 임상업무 인수인계");
+        if (row.cells.name.value !== "박현영") {
+          expect(allWork).not.toContain("NST 임상업무");
+        }
+      });
+
+      const parkHyunyoung = people.find((row) => row.cells.name.value === "박현영");
+      expect(parkHyunyoung?.cells.afternoonA.value).toBe("NST 임상업무");
+    }
+  });
+
   it("marks bottom note rows as merged full-width rows", () => {
     const assignment = buildPharmacistAssignment(2026, 9);
     const noteRows = assignment.rows.filter((row) => row.kind === "note");

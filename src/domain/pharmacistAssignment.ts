@@ -274,7 +274,7 @@ const sourceRows: Array<{
       morningSupport: "",
       morningMain: "",
       lunchEarly: "식사",
-      lunchLate: "NST 임상업무 인수인계",
+      lunchLate: "",
       afternoonA: "",
       afternoonB: "",
       duty: "NST(2512~)"
@@ -549,6 +549,41 @@ function rotatePharmacistTaskValues(
   rotateColumns(afternoonNames, ["afternoonA", "afternoonB"]);
   rotateColumns(lunchNames, ["lunchEarly", "lunchLate"]);
 
+  const hasMorningOutpatientPharmacy = (row: (typeof nextRows)[number]) =>
+    /외래약국2?/.test(`${row.values.early} ${row.values.morningSupport} ${row.values.morningMain}`);
+  const hasAfternoonOutpatientPharmacy = (row: (typeof nextRows)[number]) =>
+    /외래약국/.test(`${row.values.lunchLate} ${row.values.afternoonA} ${row.values.afternoonB}`);
+  const septemberAfternoonOffset = (year - 2026) * 12 + (month - 9);
+  const afternoonOutpatientOrder = rotateRight(afternoonNames, -septemberAfternoonOffset);
+  const preferredAfternoonOutpatientName = afternoonOutpatientOrder.find((name) => {
+    const baseName = pharmacistBaseName(name);
+    return !fixedWorkNames.includes(baseName) && !temporaryFixedNames.has(baseName) && baseName !== "박현영";
+  });
+  const preferredAfternoonOutpatient = nextRows.find(
+    (row) => row.values.name === preferredAfternoonOutpatientName
+  );
+
+  if (preferredAfternoonOutpatient && hasMorningOutpatientPharmacy(preferredAfternoonOutpatient)) {
+    const morningReplacement = nextRows.find((row) => {
+      const baseName = pharmacistBaseName(row.values.name);
+      return (
+        morningNames.includes(row.values.name) &&
+        row !== preferredAfternoonOutpatient &&
+        !fixedWorkNames.includes(baseName) &&
+        !temporaryFixedNames.has(baseName) &&
+        baseName !== "박현영" &&
+        !hasMorningOutpatientPharmacy(row)
+      );
+    });
+    if (morningReplacement) {
+      (["early", "morningSupport", "morningMain"] as const).forEach((key) => {
+        const current = preferredAfternoonOutpatient.values[key];
+        preferredAfternoonOutpatient.values[key] = morningReplacement.values[key];
+        morningReplacement.values[key] = current;
+      });
+    }
+  }
+
   const rotatingLunchRows = nextRows.filter((row) => {
     const baseName = pharmacistBaseName(row.values.name);
     return (
@@ -559,11 +594,6 @@ function rotatePharmacistTaskValues(
       baseName !== "박현영"
     );
   });
-  const hasMorningOutpatientPharmacy = (row: (typeof nextRows)[number]) =>
-    /외래약국2?/.test(`${row.values.early} ${row.values.morningSupport} ${row.values.morningMain}`);
-  const hasAfternoonOutpatientPharmacy = (row: (typeof nextRows)[number]) =>
-    /외래약국/.test(`${row.values.lunchLate} ${row.values.afternoonA} ${row.values.afternoonB}`);
-
   rotatingLunchRows.forEach((row) => {
     if (!hasMorningOutpatientPharmacy(row) || !hasAfternoonOutpatientPharmacy(row)) return;
 
@@ -590,6 +620,36 @@ function rotatePharmacistTaskValues(
     parkHyunyoung.values.lunchLate = "";
     parkHyunyoung.values.afternoonA = "NST 임상업무";
     parkHyunyoung.values.afternoonB = "";
+  }
+
+  const afternoonOutpatientHolder = nextRows.find((row) =>
+    /외래약국/.test(`${row.values.lunchLate} ${row.values.afternoonA} ${row.values.afternoonB}`)
+  );
+  const afternoonOutpatientTargetName = afternoonOutpatientOrder.find((name) => {
+    const row = nextRows.find((candidate) => candidate.values.name === name);
+    if (!row) return false;
+    const baseName = pharmacistBaseName(row.values.name);
+    return (
+      !fixedWorkNames.includes(baseName) &&
+      !temporaryFixedNames.has(baseName) &&
+      baseName !== "박현영" &&
+      !hasMorningOutpatientPharmacy(row)
+    );
+  });
+  const afternoonOutpatientTarget = nextRows.find(
+    (row) => row.values.name === afternoonOutpatientTargetName
+  );
+
+  if (
+    afternoonOutpatientHolder &&
+    afternoonOutpatientTarget &&
+    afternoonOutpatientHolder !== afternoonOutpatientTarget
+  ) {
+    (["lunchEarly", "lunchLate", "afternoonA", "afternoonB"] as const).forEach((key) => {
+      const current = afternoonOutpatientHolder.values[key];
+      afternoonOutpatientHolder.values[key] = afternoonOutpatientTarget.values[key];
+      afternoonOutpatientTarget.values[key] = current;
+    });
   }
 
   return nextRows.map((row) => {
