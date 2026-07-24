@@ -48,18 +48,14 @@ describe("pharmacist assignment template", () => {
       "김옥선",
       "송은호",
       "최윤영",
-      "김지혜",
-      "신진영",
-      "오아라",
       "이정화",
-      "안혜정",
-      "김연지",
       "이호연",
       "박윤선"
     ]);
     expect(defaultRotatingPharmacistNames).toEqual([
       "이지은",
-      "송예리",
+      "오아라",
+      "박현영",
       "박혜정",
       "김경원",
       "김수빈",
@@ -102,7 +98,8 @@ describe("pharmacist assignment template", () => {
     const septemberPark = september.rows.find((row) => row.cells.name.value === "박현영");
     const octoberPark = october.rows.find((row) => row.cells.name.value === "박현영");
 
-    expect(octoberPark?.cells.early.value).not.toBe(septemberPark?.cells.early.value);
+    expect(septemberPark?.cells.early.value).not.toBe("외래약국");
+    expect(octoberPark?.cells.early.value).not.toBe("외래약국");
     expect(octoberPark?.cells.afternoonA.value).toBe(septemberPark?.cells.afternoonA.value);
     expect(octoberPark?.cells.afternoonB.value).toBe(septemberPark?.cells.afternoonB.value);
   });

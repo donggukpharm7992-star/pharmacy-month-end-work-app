@@ -82,16 +82,18 @@ describe("staff task assignment rotation", () => {
     const august = rotateStaffAssignments(staffAssignmentTemplate, 0);
     const rotated = rotateStaffAssignments(staffAssignmentTemplate, 1);
 
-    expect([august[0].helperName, august[1].helperName, august[5].helperName]).toEqual([
+    expect([august[0].helperName, august[1].helperName, august[4].helperName]).toEqual([
       "박지숙",
       "김지현",
       "김동희"
     ]);
-    expect([rotated[0].helperName, rotated[1].helperName, rotated[5].helperName]).toEqual([
+    expect([rotated[0].helperName, rotated[1].helperName, rotated[4].helperName]).toEqual([
       "김동희",
       "박지숙",
       "김지현"
     ]);
+    expect(august[5].helperName).toBeUndefined();
+    expect(rotated[5].helperName).toBeUndefined();
   });
 
   it("exposes editable staff name lists in assignment order", () => {
@@ -118,7 +120,7 @@ describe("staff task assignment rotation", () => {
     expect(rotated[1].primaryName).toBe("직원1");
     expect(rotated[0].helperName).toBe("직원8");
     expect(rotated[1].helperName).toBe("직원3");
-    expect(rotated[5].helperName).toBe("직원6");
+    expect(rotated[4].helperName).toBe("직원6");
     expect(rotated[0].lunchEarly).toBe("식사");
     expect(rotated[0].lunchLate).toBe("");
     expect(rotated[1].lunchEarly ?? "").toBe("");

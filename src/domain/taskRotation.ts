@@ -101,6 +101,7 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   {
     task: "PTP반납1",
     primaryName: "김서훈",
+    helperName: "김동희",
     morningTask: "병동 정규불출 및 반납 받기 / 외래/퇴원챙기기, 외래 주사 챙기기",
     lunchEarly: "식사",
     lunchLate: "",
@@ -114,7 +115,6 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   {
     task: "주사",
     primaryName: "김동희",
-    helperName: "김동희",
     morningTask: "병동약 반납업무 / PTP 약정리/외래/퇴원챙기기, 외래 주사 챙기기",
     lunchLate: "식사",
     afternoonTask: "Y키 넣기/경구약(병,PTP)장 정리 / PTP예제제 만들기 / 외래/퇴원챙기기, 외래 주사 챙기기",
@@ -146,7 +146,16 @@ export const staffAssignmentTemplate: StaffAssignmentRow[] = [
   }
 ];
 
-export const defaultStaffTimeNames = staffAssignmentTemplate.map((row) => row.primaryName);
+export const defaultStaffTimeNames = [
+  "송현우",
+  "심관석",
+  "김지은",
+  "박지숙",
+  "김서훈",
+  "김동희",
+  "김지현",
+  "박종연"
+];
 
 export const defaultStaffEarlyNames = staffAssignmentTemplate
   .map((row) => row.helperName)

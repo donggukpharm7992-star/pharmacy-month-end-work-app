@@ -589,7 +589,7 @@ textarea {
 
 .pharmacist-assignment-table th:first-child,
 .pharmacist-assignment-table td:first-child {
-  min-width: 120px;
+  min-width: 90px;
 }
 
 .pharmacist-assignment-table th:nth-child(2),
@@ -600,6 +600,11 @@ textarea {
 .pharmacist-assignment-table th:nth-child(n + 3),
 .pharmacist-assignment-table td:nth-child(n + 3) {
   min-width: 138px;
+}
+
+.pharmacist-assignment-table td[colspan] .cell-textarea {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .editable-cell {
@@ -639,6 +644,20 @@ textarea {
 .merged-note-cell input {
   font-weight: 700;
   text-align: center;
+}
+
+.pharmacist-title-row {
+  align-items: center;
+}
+
+.pharmacist-lunch-alert {
+  background: #ffe0dc;
+  color: #a52f25;
+}
+
+.pharmacist-short-shift input {
+  color: #236b54;
+  font-weight: 800;
 }
 
 .assignment-list-panel {
