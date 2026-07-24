@@ -18,7 +18,7 @@ describe("pharmacist assignment template", () => {
       "11:30-12:30",
       "12:30-1:30",
       "1:30-3:00",
-      "3:00-5:30",
+      "3:00-5:00",
       "담당업무"
     ]);
 
@@ -102,6 +102,30 @@ describe("pharmacist assignment template", () => {
     expect(octoberPark?.cells.early.value).not.toBe("외래약국");
     expect(octoberPark?.cells.afternoonA.value).toBe(septemberPark?.cells.afternoonA.value);
     expect(octoberPark?.cells.afternoonB.value).toBe(septemberPark?.cells.afternoonB.value);
+  });
+
+  it("assigns the anticancer sub work to Oh Ara through September without moving it to another rotating pharmacist", () => {
+    const september = buildPharmacistAssignment(2026, 9);
+    const ohAra = september.rows.find((row) => row.cells.name.value === "오아라");
+    const kimSubin = september.rows.find((row) => row.cells.name.value === "김수빈");
+
+    expect(ohAra?.cells.morningSupport.value).toContain("항암제실 준비 청소");
+    expect(ohAra?.cells.morningMain.value).toBe("항암제 조제");
+    expect(ohAra?.cells.afternoonA.value).toContain("항암제/원내제제");
+    expect(ohAra?.cells.duty.value).toBe("항암제 서브(2607~)");
+    expect(kimSubin?.cells.morningMain.value).not.toBe("항암제 조제");
+  });
+
+  it("keeps Shin Jinyoung on fixed ASP work without anticancer afternoon work", () => {
+    const september = buildPharmacistAssignment(2026, 9);
+    const october = buildPharmacistAssignment(2026, 10);
+
+    [september, october].forEach((assignment) => {
+      const shinJinyoung = assignment.rows.find((row) => row.cells.name.value === "신진영");
+      expect(shinJinyoung?.cells.morningMain.value).toBe("ASP 임상업무");
+      expect(shinJinyoung?.cells.afternoonA.value).toBe("ASP 임상업무");
+      expect(shinJinyoung?.cells.afternoonB.value).toBe("");
+    });
   });
 
   it("marks bottom note rows as merged full-width rows", () => {

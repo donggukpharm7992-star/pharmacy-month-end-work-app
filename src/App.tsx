@@ -222,14 +222,33 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-function downloadExcelFile(filename: string, title: string, headers: string[], rows: string[][]) {
+type ExcelExportCell = {
+  value: string;
+  colSpan?: number;
+};
+
+function downloadExcelFile(
+  filename: string,
+  title: string,
+  headers: string[],
+  rows: Array<Array<string | ExcelExportCell>>
+) {
   const table = `
     <table border="1">
       <caption style="font-size:20px;font-weight:800;padding:8px 0;">${escapeHtml(title)}</caption>
       <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
       <tbody>
         ${rows
-          .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell).replace(/\n/g, "<br />")}</td>`).join("")}</tr>`)
+          .map(
+            (row) =>
+              `<tr>${row
+                .map((cell) => {
+                  const exportCell = typeof cell === "string" ? { value: cell } : cell;
+                  const colSpan = exportCell.colSpan && exportCell.colSpan > 1 ? ` colspan="${exportCell.colSpan}"` : "";
+                  return `<td${colSpan}>${escapeHtml(exportCell.value).replace(/\n/g, "<br />")}</td>`;
+                })
+                .join("")}</tr>`
+          )
           .join("")}
       </tbody>
     </table>
@@ -1075,16 +1094,51 @@ function AssignmentTab({
       return;
     }
 
+    const excelRows = pharmacistAssignment.rows.map((row) => {
+      if (row.merged) {
+        const value =
+          pharmacistCellEdits[pharmacistEditKey(row.id, "name")] ?? row.cells.name.value;
+        return [{ value, colSpan: pharmacistAssignment.columns.length }];
+      }
+
+      const cells: ExcelExportCell[] = [];
+      for (let index = 0; index < pharmacistAssignment.columns.length; index += 1) {
+        const column = pharmacistAssignment.columns[index];
+        const value =
+          pharmacistCellEdits[pharmacistEditKey(row.id, column.key)] ?? row.cells[column.key].value;
+        let colSpan = 1;
+        const isMorningColumn = pharmacistMorningBlockKeys.includes(column.key);
+
+        if (
+          mergeBlankPharmacistCells &&
+          column.key !== "name" &&
+          (isBlankPharmacistCell(value) || isMorningColumn)
+        ) {
+          while (index + colSpan < pharmacistAssignment.columns.length) {
+            const nextColumn = pharmacistAssignment.columns[index + colSpan];
+            if (isMorningColumn && !pharmacistMorningBlockKeys.includes(nextColumn.key)) break;
+            const nextValue =
+              pharmacistCellEdits[pharmacistEditKey(row.id, nextColumn.key)] ??
+              row.cells[nextColumn.key].value;
+            if (!isBlankPharmacistCell(nextValue)) break;
+            colSpan += 1;
+          }
+        }
+
+        cells.push({
+          value: pharmacistCellDisplayValue(column.key, value),
+          colSpan
+        });
+        index += colSpan - 1;
+      }
+      return cells;
+    });
+
     downloadExcelFile(
       `약사_업무분장_${year}-${String(month).padStart(2, "0")}.xls`,
       pharmacistAssignment.title,
       pharmacistAssignment.columns.map((column) => column.label),
-      pharmacistAssignment.rows.map((row) =>
-        pharmacistAssignment.columns.map((column) => {
-          const editKey = pharmacistEditKey(row.id, column.key);
-          return pharmacistCellDisplayValue(column.key, pharmacistCellEdits[editKey] ?? row.cells[column.key].value);
-        })
-      )
+      excelRows
     );
   }
 

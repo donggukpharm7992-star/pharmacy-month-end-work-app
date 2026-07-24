@@ -52,7 +52,7 @@ export const pharmacistAssignmentColumns: PharmacistAssignmentColumn[] = [
   { key: "lunchEarly", label: "11:30-12:30" },
   { key: "lunchLate", label: "12:30-1:30" },
   { key: "afternoonA", label: "1:30-3:00" },
-  { key: "afternoonB", label: "3:00-5:30" },
+  { key: "afternoonB", label: "3:00-5:00" },
   { key: "duty", label: "담당업무" }
 ];
 
@@ -186,8 +186,8 @@ const sourceRows: Array<{
       morningMain: "ASP 임상업무",
       lunchEarly: "",
       lunchLate: "식사",
-      afternoonA: "ASP 임상업무 / 경구 재고 조사일 추가/긴급",
-      afternoonB: "추가/긴급 / 조제실/항암제 휴가자 발생 시",
+      afternoonA: "ASP 임상업무",
+      afternoonB: "",
       duty: "ASP(2411~)"
     }
   },
@@ -489,6 +489,16 @@ function rotatePharmacistTaskValues(
   const temporarySubName = year === 2026 && month >= 7 && month <= 9 ? "오아라" : year === 2026 && month >= 10 ? "김수빈" : "";
   const temporaryFixedNames = new Set(temporarySubName ? [temporarySubName] : []);
   const nextRows = rows.map((row) => ({ ...row, values: { ...row.values } }));
+
+  if (temporarySubName === "오아라") {
+    const ohAra = nextRows.find((row) => pharmacistBaseName(row.values.name) === "오아라");
+    const kimSubin = nextRows.find((row) => pharmacistBaseName(row.values.name) === "김수빈");
+    if (ohAra && kimSubin) {
+      const ohAraTasks = taskPayload(ohAra.values);
+      ohAra.values = applyTaskPayload(ohAra.values, taskPayload(kimSubin.values));
+      kimSubin.values = applyTaskPayload(kimSubin.values, ohAraTasks);
+    }
+  }
 
   nextRows.forEach((row) => {
     const baseName = pharmacistBaseName(row.values.name);
