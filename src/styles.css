@@ -440,8 +440,16 @@ th {
 }
 
 .schedule-event-row .schedule-chip {
-  font-size: 13px;
+  display: grid;
+  width: 100%;
+  min-height: 34px;
+  box-sizing: border-box;
+  place-items: center;
+  padding: 5px 6px;
+  font-size: 15px;
   font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .weekend-duty-cell {
@@ -1219,10 +1227,12 @@ textarea {
   }
 
   .schedule-print-page .schedule-chip {
-    margin: 0 auto;
-    padding: 1px 2px;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 2px;
     border-radius: 2px;
-    font-size: 7px;
+    font-size: 8px;
     font-weight: 800;
     line-height: 1.1;
   }
