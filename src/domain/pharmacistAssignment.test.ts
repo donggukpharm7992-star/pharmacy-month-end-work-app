@@ -130,6 +130,19 @@ describe("pharmacist assignment template", () => {
     });
   });
 
+  it("does not assign morning and afternoon outpatient pharmacy work to the same pharmacist", () => {
+    for (let month = 9; month <= 12; month += 1) {
+      const assignment = buildPharmacistAssignment(2026, month);
+      assignment.rows
+        .filter((row) => row.kind === "person")
+        .forEach((row) => {
+          const morning = `${row.cells.early.value} ${row.cells.morningMain.value}`;
+          const afternoon = `${row.cells.lunchLate.value} ${row.cells.afternoonA.value} ${row.cells.afternoonB.value}`;
+          expect(/외래약국2?/.test(morning) && /외래약국/.test(afternoon)).toBe(false);
+        });
+    }
+  });
+
   it("marks bottom note rows as merged full-width rows", () => {
     const assignment = buildPharmacistAssignment(2026, 9);
     const noteRows = assignment.rows.filter((row) => row.kind === "note");

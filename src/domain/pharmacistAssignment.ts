@@ -549,6 +549,39 @@ function rotatePharmacistTaskValues(
   rotateColumns(afternoonNames, ["afternoonA", "afternoonB"]);
   rotateColumns(lunchNames, ["lunchEarly", "lunchLate"]);
 
+  const rotatingLunchRows = nextRows.filter((row) => {
+    const baseName = pharmacistBaseName(row.values.name);
+    return (
+      (row.kind ?? "person") === "person" &&
+      lunchNames.includes(row.values.name) &&
+      !fixedWorkNames.includes(baseName) &&
+      !temporaryFixedNames.has(baseName) &&
+      baseName !== "박현영"
+    );
+  });
+  const hasMorningOutpatientPharmacy = (row: (typeof nextRows)[number]) =>
+    /외래약국2?/.test(`${row.values.early} ${row.values.morningSupport} ${row.values.morningMain}`);
+  const hasAfternoonOutpatientPharmacy = (row: (typeof nextRows)[number]) =>
+    /외래약국/.test(`${row.values.lunchLate} ${row.values.afternoonA} ${row.values.afternoonB}`);
+
+  rotatingLunchRows.forEach((row) => {
+    if (!hasMorningOutpatientPharmacy(row) || !hasAfternoonOutpatientPharmacy(row)) return;
+
+    const replacement = rotatingLunchRows.find(
+      (candidate) =>
+        candidate !== row &&
+        !hasMorningOutpatientPharmacy(candidate) &&
+        !hasAfternoonOutpatientPharmacy(candidate)
+    );
+    if (!replacement) return;
+
+    (["lunchEarly", "lunchLate"] as const).forEach((key) => {
+      const current = row.values[key];
+      row.values[key] = replacement.values[key];
+      replacement.values[key] = current;
+    });
+  });
+
   const parkHyunyoung = nextRows.find(
     (row) => pharmacistBaseName(row.values.name) === "박현영"
   );

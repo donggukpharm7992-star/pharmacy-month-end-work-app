@@ -273,10 +273,10 @@ function downloadExcelFile(
       @page { size: A4 landscape; margin: 6mm; }
       body { margin: 0; font-family: Arial, "맑은 고딕", sans-serif; }
       table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-      caption { font-size: 18px; font-weight: 800; line-height: 1.25; padding: 4px 0 8px; }
-      th { font-size: 9px; font-weight: 700; text-align: center; padding: 4px 2px; }
-      td { font-size: 8px; line-height: 1.2; padding: 3px 4px; vertical-align: middle;
-           white-space: pre-wrap; overflow-wrap: anywhere; }
+      caption { font-size: 12pt; font-weight: 800; line-height: 1.2; padding: 3px 0 6px; text-align: center; }
+      th, td { font-size: 10pt; line-height: 1.25; padding: 2px 3px; text-align: center;
+               vertical-align: middle; white-space: pre-wrap; overflow-wrap: anywhere; }
+      th { font-weight: 700; }
     </style>${excelPageSetup}</head><body>${table}</body></html>`;
   const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
   const url = URL.createObjectURL(blob);
