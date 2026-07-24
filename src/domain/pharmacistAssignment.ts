@@ -47,7 +47,6 @@ export const pharmacistAssignmentColumns: PharmacistAssignmentColumn[] = [
   { key: "name", label: "이름" },
   { key: "code", label: "7:15~" },
   { key: "early", label: "8:00-10:00" },
-  { key: "morningSupport", label: "8:00-10:00 보조" },
   { key: "morningMain", label: "10:00-11:30" },
   { key: "lunchEarly", label: "11:30-12:30" },
   { key: "lunchLate", label: "12:30-1:30" },
@@ -528,8 +527,16 @@ function rotatePharmacistTaskValues(
     });
 
     const parkIndex = targets.findIndex((row) => pharmacistBaseName(row.values.name) === "박현영");
-    if (keys.includes("early") && parkIndex >= 0 && targets[parkIndex].values.early.includes("외래약국")) {
-      const replacementIndex = (parkIndex + 1) % targets.length;
+    const parkHasOutpatientPharmacyTask =
+      parkIndex >= 0 &&
+      keys.some((key) => /외래약국2?/.test(targets[parkIndex].values[key]));
+    if (keys.includes("early") && parkHasOutpatientPharmacyTask) {
+      const replacementIndex = targets.findIndex(
+        (row, index) =>
+          index !== parkIndex &&
+          keys.every((key) => !/외래약국2?/.test(row.values[key]))
+      );
+      if (replacementIndex < 0) return;
       keys.forEach((key) => {
         const current = targets[parkIndex].values[key];
         targets[parkIndex].values[key] = targets[replacementIndex].values[key];
@@ -541,6 +548,16 @@ function rotatePharmacistTaskValues(
   rotateColumns(morningNames, ["early", "morningSupport", "morningMain"]);
   rotateColumns(afternoonNames, ["afternoonA", "afternoonB"]);
   rotateColumns(lunchNames, ["lunchEarly", "lunchLate"]);
+
+  const parkHyunyoung = nextRows.find(
+    (row) => pharmacistBaseName(row.values.name) === "박현영"
+  );
+  if (parkHyunyoung) {
+    parkHyunyoung.values.lunchEarly = "식사";
+    parkHyunyoung.values.lunchLate = "";
+    parkHyunyoung.values.afternoonA = "NST 임상업무";
+    parkHyunyoung.values.afternoonB = "";
+  }
 
   return nextRows.map((row) => {
     const nextValues = { ...row.values };

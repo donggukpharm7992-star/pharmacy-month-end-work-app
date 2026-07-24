@@ -98,6 +98,7 @@ const staffHelperDuplicateCleanupMigrationKey = "pharmacy-app-staff-helper-dupli
 const pharmacistFixedWorkGroupMigrationKey = "pharmacy-app-pharmacist-fixed-work-group-v2";
 const legacyPharmacistFixedWorkGroup = ["김옥선", "송은호", "최윤영", "김지혜", "신진영", "오아라", "이정화", "안혜정", "김연지", "이호연", "박윤선"];
 const pharmacistRotatingGroupMigrationKey = "pharmacy-app-pharmacist-rotating-group-v2";
+const pharmacistParkHyunyoungRuleMigrationKey = "pharmacy-app-pharmacist-park-hyunyoung-rules-v1";
 const legacyPharmacistRotatingGroup = ["이지은", "송예리", "박혜정", "김경원", "김수빈", "박주영 / (~5시 30분)"];
 const staffTaskDetailMigrationKey = "pharmacy-app-staff-task-detail-swap";
 const legacyStaffTaskCellValues: Record<string, string> = {
@@ -192,8 +193,6 @@ function isBlankPharmacistCell(value: string) {
   return value.trim() === "";
 }
 
-const pharmacistMorningBlockKeys: PharmacistAssignmentColumnKey[] = ["early", "morningSupport", "morningMain"];
-
 function scheduleCellEditKey(dateKey: string, rowId: string) {
   return `${dateKey}:${rowId}`;
 }
@@ -231,11 +230,17 @@ function downloadExcelFile(
   filename: string,
   title: string,
   headers: string[],
-  rows: Array<Array<string | ExcelExportCell>>
+  rows: Array<Array<string | ExcelExportCell>>,
+  fitLandscapePage = false
 ) {
+  const columnWidths = fitLandscapePage
+    ? `<colgroup>${["7%", "6%", "18%", "15%", "10%", "10%", "20%", "11%", "13%"]
+        .map((width) => `<col style="width:${width}" />`)
+        .join("")}</colgroup>`
+    : "";
   const table = `
-    <table border="1">
-      <caption style="font-size:20px;font-weight:800;padding:8px 0;">${escapeHtml(title)}</caption>
+    <table border="1">${columnWidths}
+      <caption>${escapeHtml(title)}</caption>
       <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
       <tbody>
         ${rows
@@ -253,7 +258,26 @@ function downloadExcelFile(
       </tbody>
     </table>
   `;
-  const html = `<!doctype html><html><head><meta charset="UTF-8" /></head><body>${table}</body></html>`;
+  const excelPageSetup = fitLandscapePage
+    ? `<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+        <x:Name>약사 업무분장</x:Name><x:WorksheetOptions>
+        <x:PageSetup><x:Layout x:Orientation="Landscape"/>
+        <x:PageMargins x:Bottom="0.24" x:Left="0.24" x:Right="0.24" x:Top="0.24"/></x:PageSetup>
+        <x:FitToPage/><x:Print><x:FitWidth>1</x:FitWidth><x:FitHeight>1</x:FitHeight></x:Print>
+        </x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->`
+    : "";
+  const html = `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:x="urn:schemas-microsoft-com:office:excel"
+    xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8" />
+    <style>
+      @page { size: A4 landscape; margin: 6mm; }
+      body { margin: 0; font-family: Arial, "맑은 고딕", sans-serif; }
+      table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      caption { font-size: 18px; font-weight: 800; line-height: 1.25; padding: 4px 0 8px; }
+      th { font-size: 9px; font-weight: 700; text-align: center; padding: 4px 2px; }
+      td { font-size: 8px; line-height: 1.2; padding: 3px 4px; vertical-align: middle;
+           white-space: pre-wrap; overflow-wrap: anywhere; }
+    </style>${excelPageSetup}</head><body>${table}</body></html>`;
   const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -378,6 +402,20 @@ export default function App() {
     "pharmacy-app-staff-assignment-edits",
     {}
   );
+
+  useEffect(() => {
+    if (window.localStorage.getItem(pharmacistParkHyunyoungRuleMigrationKey) === "applied") return;
+
+    const resetKeys = new Set(
+      ["early", "morningSupport", "morningMain", "lunchEarly", "lunchLate", "afternoonA", "afternoonB"].map(
+        (key) => `park-hyunyoung:${key}`
+      )
+    );
+    setPharmacistCellEdits((current) =>
+      Object.fromEntries(Object.entries(current).filter(([key]) => !resetKeys.has(key)))
+    );
+    window.localStorage.setItem(pharmacistParkHyunyoungRuleMigrationKey, "applied");
+  }, [setPharmacistCellEdits]);
 
   useEffect(() => {
     if (window.localStorage.getItem(staffTaskDetailMigrationKey) === "applied") return;
@@ -1021,15 +1059,15 @@ function AssignmentTab({
       const displayValue = pharmacistCellDisplayValue(column.key, value);
       let colSpan = 1;
 
-      const isMorningColumn = pharmacistMorningBlockKeys.includes(column.key);
       if (
         mergeBlankPharmacistCells &&
-        column.key !== "name" &&
-        (isBlankPharmacistCell(value) || isMorningColumn)
+        !["name", "code", "duty"].includes(column.key) &&
+        !isBlankPharmacistCell(value) &&
+        value.trim() !== "식사"
       ) {
         while (index + colSpan < pharmacistAssignment.columns.length) {
           const nextColumn = pharmacistAssignment.columns[index + colSpan];
-          if (isMorningColumn && !pharmacistMorningBlockKeys.includes(nextColumn.key)) break;
+          if (nextColumn.key === "duty") break;
           const nextValue = pharmacistCellEdits[pharmacistEditKey(row.id, nextColumn.key)] ?? row.cells[nextColumn.key].value;
           if (!isBlankPharmacistCell(nextValue)) break;
           colSpan += 1;
@@ -1107,16 +1145,15 @@ function AssignmentTab({
         const value =
           pharmacistCellEdits[pharmacistEditKey(row.id, column.key)] ?? row.cells[column.key].value;
         let colSpan = 1;
-        const isMorningColumn = pharmacistMorningBlockKeys.includes(column.key);
-
         if (
           mergeBlankPharmacistCells &&
-          column.key !== "name" &&
-          (isBlankPharmacistCell(value) || isMorningColumn)
+          !["name", "code", "duty"].includes(column.key) &&
+          !isBlankPharmacistCell(value) &&
+          value.trim() !== "식사"
         ) {
           while (index + colSpan < pharmacistAssignment.columns.length) {
             const nextColumn = pharmacistAssignment.columns[index + colSpan];
-            if (isMorningColumn && !pharmacistMorningBlockKeys.includes(nextColumn.key)) break;
+            if (nextColumn.key === "duty") break;
             const nextValue =
               pharmacistCellEdits[pharmacistEditKey(row.id, nextColumn.key)] ??
               row.cells[nextColumn.key].value;
@@ -1138,7 +1175,8 @@ function AssignmentTab({
       `약사_업무분장_${year}-${String(month).padStart(2, "0")}.xls`,
       pharmacistAssignment.title,
       pharmacistAssignment.columns.map((column) => column.label),
-      excelRows
+      excelRows,
+      true
     );
   }
 

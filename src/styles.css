@@ -584,7 +584,7 @@ textarea {
 }
 
 .pharmacist-assignment-table {
-  min-width: 1320px;
+  min-width: 1180px;
 }
 
 .pharmacist-assignment-table th:first-child,
@@ -1068,6 +1068,11 @@ textarea {
   @page landscape-page {
     size: A4 landscape;
     margin: 10mm;
+  }
+
+  @page pharmacist-assignment-page {
+    size: A4 landscape;
+    margin: 6mm;
   }
 
   body {
@@ -1684,6 +1689,63 @@ textarea {
 
   .assignment-print-page .assignment-single-panel {
     padding: 0;
+  }
+
+  .assignment-print-page.pharmacist {
+    page: pharmacist-assignment-page;
+    break-after: auto;
+  }
+
+  .assignment-print-page.pharmacist .section-title {
+    margin-bottom: 1mm;
+  }
+
+  .assignment-print-page.pharmacist .pharmacist-title-row h3 {
+    width: 100%;
+    margin: 0 0 2mm;
+    text-align: center;
+    font-size: 16px;
+    line-height: 1.2;
+    font-weight: 800;
+  }
+
+  .assignment-print-page.pharmacist .assignment-source-note {
+    display: none;
+  }
+
+  .assignment-print-page.pharmacist .pharmacist-assignment-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .assignment-print-page.pharmacist .pharmacist-assignment-table th,
+  .assignment-print-page.pharmacist .pharmacist-assignment-table td {
+    min-width: 0;
+    padding: 1.2mm 1mm;
+    font-size: 7px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .assignment-print-page.pharmacist .pharmacist-assignment-table th:first-child,
+  .assignment-print-page.pharmacist .pharmacist-assignment-table td:first-child {
+    width: 7%;
+  }
+
+  .assignment-print-page.pharmacist .pharmacist-assignment-table th:nth-child(2),
+  .assignment-print-page.pharmacist .pharmacist-assignment-table td:nth-child(2) {
+    width: 6%;
+  }
+
+  .assignment-print-page.pharmacist .cell-input,
+  .assignment-print-page.pharmacist .cell-textarea {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    font-size: inherit;
+    line-height: inherit;
+    white-space: pre-wrap;
   }
 
   th,
