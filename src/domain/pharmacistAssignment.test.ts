@@ -25,7 +25,7 @@ describe("pharmacist assignment template", () => {
 
     expect(assignment.title).toBe("** 09월 01일 ~ 09월 30일 약제팀 업무분장 **");
     expect(assignment.rows[0].cells.name.value).toBe("김옥선");
-    expect(assignment.rows.some((row) => row.cells.name.value === "이지은")).toBe(true);
+    expect(assignment.rows.some((row) => row.cells.name.value.startsWith("이지은"))).toBe(true);
     expect(assignment.rows.some((row) => row.cells.name.value.startsWith("박주영"))).toBe(true);
   });
 
@@ -65,12 +65,16 @@ describe("pharmacist assignment template", () => {
   it("keeps pharmacist names in place while rotating only rotating-group task cells by month", () => {
     const september = buildPharmacistAssignment(2026, 9);
     const october = buildPharmacistAssignment(2026, 10);
-    const septemberNames = september.rows.filter((row) => row.kind === "person").map((row) => row.cells.name.value);
-    const octoberNames = october.rows.filter((row) => row.kind === "person").map((row) => row.cells.name.value);
+    const septemberNames = september.rows
+      .filter((row) => row.kind === "person")
+      .map((row) => row.cells.name.value.split("/")[0].trim());
+    const octoberNames = october.rows
+      .filter((row) => row.kind === "person")
+      .map((row) => row.cells.name.value.split("/")[0].trim());
     const fixedSeptember = september.rows.find((row) => row.cells.name.value === "김옥선");
     const fixedOctober = october.rows.find((row) => row.cells.name.value === "김옥선");
-    const rotatingSeptember = september.rows.find((row) => row.cells.name.value === "이지은");
-    const rotatingOctober = october.rows.find((row) => row.cells.name.value === "이지은");
+    const rotatingSeptember = september.rows.find((row) => row.cells.name.value.startsWith("이지은"));
+    const rotatingOctober = october.rows.find((row) => row.cells.name.value.startsWith("이지은"));
 
     expect(octoberNames).toEqual(septemberNames);
     expect(fixedOctober?.cells.early.value).toBe(fixedSeptember?.cells.early.value);
@@ -86,7 +90,7 @@ describe("pharmacist assignment template", () => {
     });
     const personNames = assignment.rows.filter((row) => row.kind === "person").map((row) => row.cells.name.value);
 
-    expect(personNames[5]).toBe("순환약사A");
+    expect(personNames[5]).toContain("순환약사A");
     expect(personNames[6]).toBe("고정약사B");
     expect(personNames).toHaveLength(defaultPharmacistNameList.length);
   });
@@ -145,11 +149,17 @@ describe("pharmacist assignment template", () => {
 
   it("anchors September afternoon outpatient pharmacy work to Lee Jieun", () => {
     const september = buildPharmacistAssignment(2026, 9);
-    const leeJieun = september.rows.find((row) => row.cells.name.value === "이지은");
+    const leeJieun = september.rows.find((row) => row.cells.name.value.startsWith("이지은"));
 
     expect(
       `${leeJieun?.cells.lunchLate.value} ${leeJieun?.cells.afternoonA.value} ${leeJieun?.cells.afternoonB.value}`
     ).toContain("외래약국");
+    expect(leeJieun?.cells.name.value).toContain("(~5시 30분)");
+    expect(
+      september.rows
+        .filter((row) => row.kind === "person" && !row.cells.name.value.startsWith("이지은"))
+        .every((row) => !row.cells.name.value.includes("(~5시 30분)"))
+    ).toBe(true);
   });
 
   it("never rotates NST handover work and keeps NST clinical work only with Park Hyunyoung", () => {

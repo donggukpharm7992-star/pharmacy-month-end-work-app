@@ -728,6 +728,17 @@ export function buildPharmacistAssignment(
     rotatePharmacistTaskValues(sourceRows, year, month, options),
     options.pharmacistNames
   );
+  const personRows = rows.filter((row) => (row.kind ?? "person") === "person");
+  personRows.forEach((row) => {
+    row.values.name = row.values.name.replace(/\s*\/\s*\(~5시\s*30분\)\s*$/, "").trim();
+  });
+  const afternoonOutpatientPharmacist = personRows.find((row) =>
+    /외래약국/.test(`${row.values.lunchLate} ${row.values.afternoonA} ${row.values.afternoonB}`)
+  );
+  if (afternoonOutpatientPharmacist) {
+    afternoonOutpatientPharmacist.values.name =
+      `${afternoonOutpatientPharmacist.values.name} / (~5시 30분)`;
+  }
 
   return {
     title,
