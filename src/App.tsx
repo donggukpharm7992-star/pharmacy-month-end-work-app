@@ -64,6 +64,7 @@ import { useLocalStorageState } from "./storage";
 
 type MainTab = "schedule" | "assignment" | "documents" | "checklists";
 type PrintOrientation = "portrait" | "landscape";
+type DocumentPrintMode = PrintOrientation | "all";
 type DocumentColumnEdits = Record<string, string[]>;
 
 type EditableLists = {
@@ -326,7 +327,7 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(new Date(2026, 8, 1));
   const [printOrientation, setPrintOrientation] = useState<PrintOrientation>("landscape");
   const [printCalendar, setPrintCalendar] = useState(false);
-  const [printAllDocumentsMode, setPrintAllDocumentsMode] = useState<PrintOrientation | null>(null);
+  const [printAllDocumentsMode, setPrintAllDocumentsMode] = useState<DocumentPrintMode | null>(null);
   const [printAllChecklists, setPrintAllChecklists] = useState(false);
   const year = selectedDate.getFullYear();
   const month = selectedDate.getMonth() + 1;
@@ -651,9 +652,9 @@ export default function App() {
     printCurrent("landscape");
   }
 
-  function printAllDocuments(orientation: PrintOrientation) {
-    setPrintAllDocumentsMode(orientation);
-    setPrintOrientation(orientation);
+  function printAllDocuments(mode: DocumentPrintMode) {
+    setPrintAllDocumentsMode(mode);
+    setPrintOrientation(mode === "portrait" ? "portrait" : "landscape");
     window.setTimeout(() => window.print(), 50);
   }
 
@@ -809,11 +810,11 @@ export default function App() {
           />
         )}
 
-        {activeTab === "documents" && <DocumentsTab year={year} month={month} onPrint={printCurrent} />}
+        {activeTab === "documents" && <DocumentsTab year={year} month={month} onPrint={printCurrent} onPrintAll={() => printAllDocuments("all")} />}
 
         {activeTab === "checklists" && <ChecklistsTab year={year} month={month} onPrint={printCurrent} />}
 
-        {printAllDocumentsMode && <GlobalDocumentPrint year={year} month={month} orientation={printAllDocumentsMode} />}
+        {printAllDocumentsMode && <GlobalDocumentPrint year={year} month={month} mode={printAllDocumentsMode} />}
         {printAllChecklists && <GlobalChecklistPrint year={year} month={month} />}
       </main>
     </div>
@@ -1527,11 +1528,13 @@ function EquipmentDocumentTable({
 function DocumentsTab({
   year,
   month,
-  onPrint
+  onPrint,
+  onPrintAll
 }: {
   year: number;
   month: number;
   onPrint: (orientation: PrintOrientation) => void;
+  onPrintAll: () => void;
 }) {
   const [selected, setSelected] = useState(monthEndDocumentGroups[0].title);
   const [selectedItemId, setSelectedItemId] = useState(monthEndDocumentGroups[0].printItems[0].id);
@@ -1584,9 +1587,14 @@ function DocumentsTab({
 
   return (
     <section className="panel print-page">
-      <div className="section-title">
-        <h2>월말 결재 서류</h2>
-        <p>원본 엑셀 서류의 시트와 장비 목록을 선택해 낱장으로 출력합니다.</p>
+      <div className="section-title document-section-title">
+        <div>
+          <h2>월말 결재 서류</h2>
+          <p>원본 엑셀 서류의 시트와 장비 목록을 선택해 낱장으로 출력합니다.</p>
+        </div>
+        <button type="button" className="no-print" onClick={onPrintAll}>
+          <Printer size={16} /> 전체 서류 출력
+        </button>
       </div>
       <div className="subtabs no-print">
         {monthEndDocumentGroups.map((item) => (
@@ -1621,6 +1629,7 @@ function DocumentsTab({
         </div>
         <div className="document-print-actions no-print">
           <button type="button" onClick={saveDocumentColumns}>수정 저장</button>
+          {savedDocumentColumns[selectedItem.id] && <span>최종본 저장됨</span>}
         </div>
         {selectedItem.notes?.map((note) => (
           <p className="document-note" key={note}>{note}</p>
@@ -1727,7 +1736,7 @@ function PrintDocumentSheet({
 }) {
   const days = buildChecklistMonthDays(year, month);
   return (
-    <section className={`print-document-sheet ${item.id}`}>
+    <section className={`print-document-sheet print-document-${item.orientation} ${item.id}`}>
       <h3>{group.title} - {item.title}</h3>
       <div className="print-approval-box">
         <div>담당자</div><div>파트장</div><div>팀장</div>
@@ -1754,17 +1763,17 @@ function PrintDocumentSheet({
 function GlobalDocumentPrint({
   year,
   month,
-  orientation
+  mode
 }: {
   year: number;
   month: number;
-  orientation: PrintOrientation;
+  mode: DocumentPrintMode;
 }) {
   const [savedDocumentColumns] = useLocalStorageState<DocumentColumnEdits>(documentColumnEditsStorageKey, {});
   return (
     <div className="global-document-print">
       {monthEndDocumentGroups
-        .filter((group) => group.orientation === orientation)
+        .filter((group) => mode === "all" || group.orientation === mode)
         .flatMap((group) => group.printItems.map((item) => (
           <PrintDocumentSheet key={item.id} year={year} month={month} group={group} item={item} columns={getDocumentColumns(item, savedDocumentColumns)} />
         )))}

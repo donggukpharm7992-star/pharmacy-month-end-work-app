@@ -227,6 +227,19 @@ button {
   font-size: 13px;
 }
 
+.document-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.document-print-actions span {
+  align-self: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .row-title {
   display: flex;
   justify-content: space-between;
@@ -1352,6 +1365,14 @@ textarea {
   .print-document-sheet * {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  .printing-all-documents .print-document-portrait {
+    page: portrait-page;
+  }
+
+  .printing-all-documents .print-document-landscape {
+    page: landscape-page;
   }
 
   .print-document-sheet .document-data-table th:nth-child(2),
