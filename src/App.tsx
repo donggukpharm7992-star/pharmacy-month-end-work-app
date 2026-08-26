@@ -31,6 +31,8 @@ import {
 import {
   buildChecklistMonthDays,
   checklistPrintGroups,
+  ChecklistMonthDay,
+  DocumentEquipment,
   MonthEndDocumentGroup,
   MonthEndPrintItem,
   monthEndDocumentGroups,
@@ -62,6 +64,7 @@ import { useLocalStorageState } from "./storage";
 
 type MainTab = "schedule" | "assignment" | "documents" | "checklists";
 type PrintOrientation = "portrait" | "landscape";
+type DocumentColumnEdits = Record<string, string[]>;
 
 type EditableLists = {
   nightPharmacists: string[];
@@ -110,6 +113,7 @@ const pharmacistParkHyunyoungRuleMigrationKey = "pharmacy-app-pharmacist-park-hy
 const pharmacistFixedLunchPairMigrationKey = "pharmacy-app-pharmacist-fixed-lunch-pair-v1";
 const legacyPharmacistRotatingGroup = ["이지은", "송예리", "박혜정", "김경원", "김수빈", "박주영 / (~5시 30분)"];
 const staffTaskDetailMigrationKey = "pharmacy-app-staff-task-detail-swap";
+const documentColumnEditsStorageKey = "pharmacy-app-document-column-edits";
 const legacyStaffTaskCellValues: Record<string, string> = {
   "3:inventoryTask": "냉장약/ 수액",
   "4:deepCleanTask": "주사장 청소 / (앰플, 바이알 한달씩 / 번갈아 가며 하기)",
@@ -1465,6 +1469,56 @@ function AssignmentTab({
   );
 }
 
+function getDocumentColumns(item: MonthEndPrintItem, edits: DocumentColumnEdits) {
+  const savedColumns = edits[item.id];
+  return savedColumns?.length === item.columns.length ? savedColumns : item.columns;
+}
+
+function EquipmentDocumentTable({
+  days,
+  equipment,
+  interactive = false,
+  selectedEquipmentAssetNo = "",
+  className = ""
+}: {
+  days: ChecklistMonthDay[];
+  equipment: DocumentEquipment[];
+  interactive?: boolean;
+  selectedEquipmentAssetNo?: string;
+  className?: string;
+}) {
+  return (
+    <table className={`equipment-document-table ${className}`.trim()}>
+      <thead>
+        <tr>
+          <th>자산번호</th>
+          <th>장비명</th>
+          {days.map((day) => (
+            <th className={day.offDay ? "date-highlight" : ""} key={day.dateKey}>
+              {day.day}
+              <span>{day.weekdayLabel}</span>
+              {day.holidayName && <small>{day.holidayName}</small>}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {equipment.map((equipmentItem) => (
+          <tr
+            className={interactive && equipmentItem.assetNo === selectedEquipmentAssetNo ? "selected-equipment-row" : ""}
+            key={equipmentItem.assetNo}
+          >
+            <td>{interactive ? <input className="cell-input compact-input" defaultValue={equipmentItem.assetNo} /> : equipmentItem.assetNo}</td>
+            <td>{interactive ? <input className="cell-input compact-input" defaultValue={equipmentItem.name} /> : equipmentItem.name}</td>
+            {days.map((day) => <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={day.dateKey}></td>)}
+          </tr>
+        ))}
+      </tbody>
+      <tfoot><tr><td colSpan={days.length + 1}></td><th>점검자</th></tr></tfoot>
+    </table>
+  );
+}
+
 function DocumentsTab({
   year,
   month,
@@ -1479,19 +1533,16 @@ function DocumentsTab({
   const [selectedPrintItemIds, setSelectedPrintItemIds] = useState<string[]>([monthEndDocumentGroups[0].printItems[0].id]);
   const [selectedEquipmentAssetNo, setSelectedEquipmentAssetNo] = useState("");
   const [isPrinting, setIsPrinting] = useState(false);
+  const [savedDocumentColumns, setSavedDocumentColumns] = useLocalStorageState<DocumentColumnEdits>(documentColumnEditsStorageKey, {});
   const group = monthEndDocumentGroups.find((item) => item.title === selected) ?? monthEndDocumentGroups[0];
   const selectedItem = group.printItems.find((item) => item.id === selectedItemId) ?? group.printItems[0];
-  const days = Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => {
-    const day = index + 1;
-    const date = new Date(year, month - 1, day);
-    const dateKey = toDateKey(year, month, day);
-    return {
-      day,
-      weekday: ["일", "월", "화", "수", "목", "금", "토"][date.getDay()],
-      holidayName: getHolidayName(dateKey),
-      highlighted: isWeekend(date) || getHolidayName(dateKey) != null
-    };
-  });
+  const savedColumns = getDocumentColumns(selectedItem, savedDocumentColumns);
+  const [draftColumns, setDraftColumns] = useState(savedColumns);
+  const days = buildChecklistMonthDays(year, month);
+
+  useEffect(() => {
+    setDraftColumns(getDocumentColumns(selectedItem, savedDocumentColumns));
+  }, [selectedItem.id, savedDocumentColumns]);
 
   function selectGroup(nextGroupTitle: string) {
     const nextGroup = monthEndDocumentGroups.find((item) => item.title === nextGroupTitle) ?? monthEndDocumentGroups[0];
@@ -1508,6 +1559,10 @@ function DocumentsTab({
 
   function togglePrintItem(itemId: string) {
     setSelectedPrintItemIds((ids) => ids.includes(itemId) ? ids.filter((id) => id !== itemId) : [...ids, itemId]);
+  }
+
+  function saveDocumentColumns() {
+    setSavedDocumentColumns((current) => ({ ...current, [selectedItem.id]: draftColumns }));
   }
 
   function printSelectedItems() {
@@ -1552,70 +1607,48 @@ function DocumentsTab({
           </button>
         </div>
         <div className="editable-fields no-print">
-          {[...group.editableFields, ...selectedItem.columns].map((field, index) => (
-            <label key={`${field}-${index}`}>
+          {draftColumns.map((field, index) => (
+            <label key={`${selectedItem.id}-${index}`}>
               <span>{field}</span>
-              <input defaultValue={field} />
+              <input value={field} onChange={(event) => setDraftColumns((columns) => columns.map((column, columnIndex) => columnIndex === index ? event.target.value : column))} />
             </label>
           ))}
+        </div>
+        <div className="document-print-actions no-print">
+          <button type="button" onClick={saveDocumentColumns}>수정 저장</button>
         </div>
         {selectedItem.notes?.map((note) => (
           <p className="document-note" key={note}>{note}</p>
         ))}
 
         {selectedItem.equipment ? (
-          <table className="equipment-document-table">
-            <thead>
-              <tr>
-                <th>자산번호</th>
-                <th>장비명</th>
-                {days.map(({ day, weekday, holidayName, highlighted }) => (
-                  <th className={highlighted ? "date-highlight" : ""} key={day}>
-                    {day}
-                    <span>{weekday}</span>
-                    {holidayName && <small>{holidayName}</small>}
-                  </th>
-                ))}
-                <th>점검자 확인</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedItem.equipment.map((equipment) => (
-                <tr
-                  className={equipment.assetNo === selectedEquipmentAssetNo ? "selected-equipment-row" : ""}
-                  key={equipment.assetNo}
-                >
-                  <td><input className="cell-input compact-input" defaultValue={equipment.assetNo} /></td>
-                  <td><input className="cell-input compact-input" defaultValue={equipment.name} /></td>
-                  {days.map(({ day, highlighted }) => (
-                    <td className={`empty-write-cell ${highlighted ? "date-highlight" : ""}`} key={day}></td>
-                  ))}
-                  <td></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <EquipmentDocumentTable
+            days={days}
+            equipment={selectedItem.equipment}
+            interactive
+            selectedEquipmentAssetNo={selectedEquipmentAssetNo}
+          />
         ) : (
           <table className="document-data-table">
             <thead>
               <tr>
                 <th>날짜</th>
                 <th>요일</th>
-                {selectedItem.columns.map((field) => (
+                {savedColumns.map((field) => (
                   <th key={field}>{field}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {days.map(({ day, weekday, holidayName, highlighted }) => (
-                <tr className={highlighted ? "date-highlight" : ""} key={day}>
+              {days.map(({ day, weekdayLabel, holidayName, offDay }) => (
+                <tr className={offDay ? "date-highlight" : ""} key={day}>
                   <td>{day}일</td>
                   <td>
-                    {weekday}
+                    {weekdayLabel}
                     {holidayName && <small className="holiday-inline">{holidayName}</small>}
                   </td>
-                  {selectedItem.columns.map((field) => (
-                    <td className="empty-write-cell" key={field}></td>
+                  {savedColumns.map((field, index) => (
+                    <td className="empty-write-cell" key={index}></td>
                   ))}
                 </tr>
               ))}
@@ -1667,7 +1700,7 @@ function DocumentsTab({
         <div className="print-document-sheets">
           {group.printItems
             .filter((item) => selectedPrintItemIds.includes(item.id))
-            .map((item) => <PrintDocumentSheet key={item.id} year={year} month={month} group={group} item={item} />)}
+            .map((item) => <PrintDocumentSheet key={item.id} year={year} month={month} group={group} item={item} columns={getDocumentColumns(item, savedDocumentColumns)} />)}
         </div>
       )}
     </section>
@@ -1678,12 +1711,14 @@ function PrintDocumentSheet({
   year,
   month,
   group,
-  item
+  item,
+  columns = item.columns
 }: {
   year: number;
   month: number;
   group: MonthEndDocumentGroup;
   item: MonthEndPrintItem;
+  columns?: string[];
 }) {
   const days = buildChecklistMonthDays(year, month);
   return (
@@ -1698,17 +1733,12 @@ function PrintDocumentSheet({
       </div>
       {item.notes?.map((note) => <p className="print-document-note" key={note}>{note}</p>)}
       {item.equipment ? (
-        <table className="equipment-document-table document-data-table">
-          <thead><tr><th>자산번호</th><th>장비명</th>{days.map((day) => <th className={day.offDay ? "date-highlight" : ""} key={day.dateKey}>{day.day}<span>{day.weekdayLabel}</span>{day.holidayName && <small>{day.holidayName}</small>}</th>)}<th>점검자</th></tr></thead>
-          <tbody>{item.equipment.map((equipment) => (
-            <tr key={equipment.assetNo}><td>{equipment.assetNo}</td><td>{equipment.name}</td>{days.map((day) => <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={day.dateKey}></td>)}<td></td></tr>
-          ))}</tbody>
-        </table>
+        <EquipmentDocumentTable days={days} equipment={item.equipment} className="document-data-table" />
       ) : (
         <table className="document-data-table">
-          <thead><tr><th>일자</th><th>요일</th>{item.columns.map((field) => <th key={field}>{field}</th>)}</tr></thead>
+          <thead><tr><th>일자</th><th>요일</th>{columns.map((field, index) => <th key={index}>{field}</th>)}</tr></thead>
           <tbody>{days.map((day) => {
-            return <tr className={day.offDay ? "date-highlight" : ""} key={day.dateKey}><td>{day.day}일</td><td>{day.weekdayLabel}{day.holidayName && <small className="holiday-inline">{day.holidayName}</small>}</td>{item.columns.map((field) => <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={field}></td>)}</tr>;
+            return <tr className={day.offDay ? "date-highlight" : ""} key={day.dateKey}><td>{day.day}일</td><td>{day.weekdayLabel}{day.holidayName && <small className="holiday-inline">{day.holidayName}</small>}</td>{columns.map((field, index) => <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={index}></td>)}</tr>;
           })}</tbody>
         </table>
       )}
@@ -1725,12 +1755,13 @@ function GlobalDocumentPrint({
   month: number;
   orientation: PrintOrientation;
 }) {
+  const [savedDocumentColumns] = useLocalStorageState<DocumentColumnEdits>(documentColumnEditsStorageKey, {});
   return (
     <div className="global-document-print">
       {monthEndDocumentGroups
         .filter((group) => group.orientation === orientation)
         .flatMap((group) => group.printItems.map((item) => (
-          <PrintDocumentSheet key={item.id} year={year} month={month} group={group} item={item} />
+          <PrintDocumentSheet key={item.id} year={year} month={month} group={group} item={item} columns={getDocumentColumns(item, savedDocumentColumns)} />
         )))}
     </div>
   );
