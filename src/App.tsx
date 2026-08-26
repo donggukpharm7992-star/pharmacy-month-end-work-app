@@ -1514,7 +1514,12 @@ function EquipmentDocumentTable({
           </tr>
         ))}
       </tbody>
-      <tfoot><tr><td colSpan={days.length + 1}></td><th>점검자</th></tr></tfoot>
+      <tfoot>
+        <tr>
+          <th colSpan={2}>점검자</th>
+          {days.map((day) => <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={day.dateKey}></td>)}
+        </tr>
+      </tfoot>
     </table>
   );
 }
