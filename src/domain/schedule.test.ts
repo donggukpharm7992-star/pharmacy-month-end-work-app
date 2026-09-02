@@ -251,6 +251,44 @@ describe("schedule rules", () => {
     expect(schedule.days.find((day) => day.dateKey === "2026-09-19")?.morningStaff).toEqual(["김동희", "박종연"]);
   });
 
+  it("defers deleted holiday staff within the separate holiday rotation", () => {
+    const base = buildMonthSchedule(2026, 10);
+    const schedule = applyScheduleDutyEditContinuations(
+      base,
+      { "2026-10-05:lowerMorningStaff": "" },
+      { weekendStaff: defaultWeekendStaff, weekendPharmacists: defaultWeekendPharmacists }
+    );
+
+    expect(base.days.find((day) => day.dateKey === "2026-10-05")?.lowerMorningStaff).toEqual(["김동희"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-10-09")?.lowerMorningStaff).toEqual(["김동희"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-10-10")?.morningStaff)
+      .toEqual(base.days.find((day) => day.dateKey === "2026-10-10")?.morningStaff);
+  });
+
+  it("defers deleted Saturday staff to the next weekend duty without changing holidays", () => {
+    const base = buildMonthSchedule(2026, 10);
+    const deletedSaturdayStaff = base.days.find((day) => day.dateKey === "2026-10-10")?.morningStaff ?? [];
+    const schedule = applyScheduleDutyEditContinuations(
+      base,
+      { "2026-10-10:morningStaff": "" },
+      { weekendStaff: defaultWeekendStaff, weekendPharmacists: defaultWeekendPharmacists }
+    );
+
+    expect(schedule.days.find((day) => day.dateKey === "2026-10-11")?.lowerMorningStaff).toEqual([deletedSaturdayStaff[0]]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-10-09")?.lowerMorningStaff)
+      .toEqual(base.days.find((day) => day.dateKey === "2026-10-09")?.lowerMorningStaff);
+  });
+
+  it("continues holiday staff after the replacement name", () => {
+    const schedule = applyScheduleDutyEditContinuations(
+      buildMonthSchedule(2026, 10),
+      { "2026-10-05:lowerMorningStaff": "김지현" },
+      { weekendStaff: defaultWeekendStaff, weekendPharmacists: defaultWeekendPharmacists }
+    );
+
+    expect(schedule.days.find((day) => day.dateKey === "2026-10-09")?.lowerMorningStaff).toEqual(["박지숙"]);
+  });
+
   it("continues the full-day pharmacist rotation independently from an edited name", () => {
     const base = buildMonthSchedule(2026, 9);
     const schedule = applyScheduleDutyEditContinuations(
