@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   assignNightPharmacists,
   assignNightStaff,
+  applyScheduleDutyEditContinuations,
   buildDefaultScheduleEventDates,
   buildMonthSchedule,
   buildNightPharmacistTurnEvents,
   buildScheduleWeeks,
+  defaultWeekendPharmacists,
+  defaultWeekendStaff,
   rotateNightPharmacists,
   scheduleNameDensityClass
 } from "./schedule";
@@ -222,6 +225,57 @@ describe("schedule rules", () => {
     for (const day of dutyDates) {
       expect(day.upperMorningPharmacists.filter((name) => day.dayPharmacists.includes(name))).toEqual([]);
     }
+  });
+
+  it("continues only the edited half-day pharmacist rotation from the replacement name", () => {
+    const base = buildMonthSchedule(2026, 9);
+    const schedule = applyScheduleDutyEditContinuations(
+      base,
+      { "2026-09-12:upperMorningPharmacists": "김지혜/오아라" },
+      { weekendStaff: defaultWeekendStaff, weekendPharmacists: defaultWeekendPharmacists }
+    );
+
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-19")?.upperMorningPharmacists[0]).toBe("이정화");
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-19")?.dayPharmacists)
+      .toEqual(base.days.find((day) => day.dateKey === "2026-09-19")?.dayPharmacists);
+  });
+
+  it("continues the shared Saturday and Sunday staff rotation from the edited staff", () => {
+    const schedule = applyScheduleDutyEditContinuations(
+      buildMonthSchedule(2026, 9),
+      { "2026-09-12:morningStaff": "송현우/김서훈" },
+      { weekendStaff: defaultWeekendStaff, weekendPharmacists: defaultWeekendPharmacists }
+    );
+
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-13")?.lowerMorningStaff).toEqual(["심관석"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-19")?.morningStaff).toEqual(["김동희", "박종연"]);
+  });
+
+  it("continues the full-day pharmacist rotation independently from an edited name", () => {
+    const base = buildMonthSchedule(2026, 9);
+    const schedule = applyScheduleDutyEditContinuations(
+      base,
+      { "2026-09-12:dayPharmacists": "오아라/이승현" },
+      { weekendStaff: defaultWeekendStaff, weekendPharmacists: defaultWeekendPharmacists }
+    );
+
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-13")?.dayPharmacists).toEqual(["서윤석", "이정화"]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-09-19")?.upperMorningPharmacists)
+      .toEqual(base.days.find((day) => day.dateKey === "2026-09-19")?.upperMorningPharmacists);
+  });
+
+  it("defers deleted holiday pharmacists to the next full-day duty dates", () => {
+    const schedule = applyScheduleDutyEditContinuations(
+      buildMonthSchedule(2026, 10),
+      {
+        "2026-10-04:dayPharmacists": "박주영/서윤석",
+        "2026-10-05:dayPharmacists": ""
+      },
+      { weekendStaff: defaultWeekendStaff, weekendPharmacists: defaultWeekendPharmacists }
+    );
+
+    expect(schedule.days.find((day) => day.dateKey === "2026-10-05")?.dayPharmacists).toEqual([]);
+    expect(schedule.days.find((day) => day.dateKey === "2026-10-09")?.dayPharmacists).toEqual(["김지혜", "최윤영"]);
   });
 
   it("builds the selected month schedule with event dates surfaced beside the table", () => {

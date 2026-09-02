@@ -26,6 +26,11 @@ export type MonthScheduleOptions = {
   weekendPharmacists?: string[];
 };
 
+export type ScheduleDutyEditOptions = {
+  weekendStaff: string[];
+  weekendPharmacists: string[];
+};
+
 export type ScheduleDay = {
   dateKey: string;
   day: number;
@@ -547,6 +552,250 @@ export function buildMonthSchedule(
     days,
     events
   };
+}
+
+type DutyRotationStream = "staffWeekend" | "staffHoliday" | "pharmacistFullDay" | "pharmacistHalfDay";
+
+type DutyEdit = {
+  dateKey: string;
+  value: string;
+};
+
+function dutyNames(value: string): string[] {
+  return value.split("/").map((name) => name.trim()).filter(Boolean);
+}
+
+function dutyEditStream(dateKey: string, rowId: string): DutyRotationStream | null {
+  const weekday = dateKeyToDate(dateKey).getDay();
+  const holiday = isHoliday(dateKey);
+
+  if (rowId === "dayPharmacists" && (weekday === 0 || weekday === 6 || holiday)) return "pharmacistFullDay";
+  if (rowId === "upperMorningPharmacists" && (weekday === 6 || holiday)) return "pharmacistHalfDay";
+  if (rowId === "morningStaff" && weekday === 6) return "staffWeekend";
+  if (rowId !== "lowerMorningStaff") return null;
+  if (holiday && weekday !== 6) return "staffHoliday";
+  if (weekday === 0) return "staffWeekend";
+  return null;
+}
+
+function collectActiveDutyEdits(
+  edits: Record<string, string>,
+  monthStart: string,
+  monthEnd: string
+): Record<DutyRotationStream, Map<string, DutyEdit>> {
+  const grouped: Record<DutyRotationStream, DutyEdit[]> = {
+    staffWeekend: [],
+    staffHoliday: [],
+    pharmacistFullDay: [],
+    pharmacistHalfDay: []
+  };
+
+  Object.entries(edits).forEach(([key, value]) => {
+    const dateKey = key.slice(0, 10);
+    const rowId = key.slice(11);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || dateKey > monthEnd) return;
+    const stream = dutyEditStream(dateKey, rowId);
+    if (stream) grouped[stream].push({ dateKey, value });
+  });
+
+  return Object.fromEntries(
+    Object.entries(grouped).map(([stream, streamEdits]) => {
+      const prior = streamEdits
+        .filter((edit) => edit.dateKey < monthStart)
+        .sort((left, right) => right.dateKey.localeCompare(left.dateKey))[0];
+      const current = streamEdits.filter((edit) => edit.dateKey >= monthStart);
+      return [stream, new Map([...(prior ? [prior] : []), ...current].map((edit) => [edit.dateKey, edit]))];
+    })
+  ) as Record<DutyRotationStream, Map<string, DutyEdit>>;
+}
+
+function cursorAfterDutyEdit(
+  orderedNames: string[],
+  plannedNames: string[],
+  editedValue: string,
+  cursorBefore: number,
+  cursorAfterPlanned: number
+): number {
+  const editedNames = dutyNames(editedValue).filter((name) => orderedNames.includes(name));
+  if (editedNames.length === 0) return cursorBefore;
+
+  const planned = plannedNames.filter((name) => orderedNames.includes(name));
+  const hasReplacement = editedNames.some((name) => !planned.includes(name));
+  if (hasReplacement) return orderedNames.indexOf(editedNames[editedNames.length - 1]) + 1;
+
+  const remaining = [...editedNames];
+  const firstDeleted = planned.find((name) => {
+    const index = remaining.indexOf(name);
+    if (index < 0) return true;
+    remaining.splice(index, 1);
+    return false;
+  });
+  if (firstDeleted) return orderedNames.indexOf(firstDeleted);
+
+  return editedNames.length === planned.length
+    ? cursorAfterPlanned
+    : orderedNames.indexOf(editedNames[editedNames.length - 1]) + 1;
+}
+
+function fullDayDutyFromCursor(
+  dateKey: string,
+  orderedNames: string[],
+  cursor: number
+): { assigned: string[]; rotating: string[]; nextCursor: number } {
+  const date = dateKeyToDate(dateKey);
+  const weekday = date.getDay();
+  const holiday = isHoliday(dateKey);
+  if (weekday !== 0 && weekday !== 6 && !holiday) return { assigned: [], rotating: [], nextCursor: cursor };
+  if (isFirstSaturday(dateKey)) return { assigned: ["최윤영", "이승현"], rotating: [], nextCursor: cursor };
+
+  const count = weekday === 6 ? 1 : holiday ? 2 : 1;
+  const rotating = takeCycled(orderedNames, cursor, count);
+  if (weekday === 6) return { assigned: [...rotating, "이승현"], rotating, nextCursor: cursor + count };
+  if (holiday) return { assigned: rotating, rotating, nextCursor: cursor + count };
+  return {
+    assigned: date.getMonth() % 2 === 0 ? ["서윤석", ...rotating] : [...rotating, "서윤석"],
+    rotating,
+    nextCursor: cursor + count
+  };
+}
+
+function halfDayCursorBefore(dateKey: string, names: string[]): number {
+  let current = dateKeyToDate(HALF_DAY_PHARMACIST_ROTATION_ANCHOR);
+  const target = dateKeyToDate(dateKey);
+  const orderedNames = rotateFromName(names, "김지혜");
+  let cursor = 0;
+
+  while (current < target) {
+    const currentKey = toDateKey(current.getFullYear(), current.getMonth() + 1, current.getDate());
+    const weekday = current.getDay();
+    const holiday = isHoliday(currentKey);
+    if (weekday === 6 || holiday) {
+      const count = weekday === 6 ? isFirstSaturday(currentKey) && !holiday ? 3 : 2 : 1;
+      const fullDayNames = dayPharmacistNames(
+        currentKey, weekday, holiday, current.getFullYear(), current.getMonth() + 1, names
+      );
+      cursor = takeCycledExcluding(orderedNames, cursor, count, fullDayNames).nextStart;
+    }
+    current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
+  }
+
+  return cursor;
+}
+
+export function applyScheduleDutyEditContinuations(
+  schedule: MonthSchedule,
+  edits: Record<string, string>,
+  options: ScheduleDutyEditOptions
+): MonthSchedule {
+  const monthStart = toDateKey(schedule.year, schedule.month, 1);
+  const monthEnd = toDateKey(schedule.year, schedule.month, daysInMonth(schedule.year, schedule.month));
+  const activeEdits = collectActiveDutyEdits(edits, monthStart, monthEnd);
+  const hasStaffWeekendEdits = activeEdits.staffWeekend.size > 0;
+  const hasStaffHolidayEdits = activeEdits.staffHoliday.size > 0;
+  const hasFullDayEdits = activeEdits.pharmacistFullDay.size > 0;
+  const hasHalfDayEdits = activeEdits.pharmacistHalfDay.size > 0;
+  if (!hasStaffWeekendEdits && !hasStaffHolidayEdits && !hasFullDayEdits && !hasHalfDayEdits) return schedule;
+  const firstPriorDate = Object.values(activeEdits)
+    .flatMap((streamEdits) => [...streamEdits.keys()].filter((dateKey) => dateKey < monthStart))
+    .sort()[0];
+  const simulationStart = firstPriorDate ?? monthStart;
+  const days = schedule.days.map((day) => ({
+    ...day,
+    morningStaff: [...day.morningStaff],
+    lowerMorningStaff: [...day.lowerMorningStaff],
+    dayPharmacists: [...day.dayPharmacists],
+    upperMorningPharmacists: [...day.upperMorningPharmacists]
+  }));
+  const outputDays = new Map(days.map((day) => [day.dateKey, day]));
+  const staffNames = options.weekendStaff.map((name) => name.trim()).filter(Boolean);
+  const fullDayNames = rotateFromName(options.weekendPharmacists, "박주영");
+  const halfDayNames = rotateFromName(options.weekendPharmacists, "김지혜");
+  let staffWeekendCursor: number | null = null;
+  let staffHolidayCursor: number | null = null;
+  let fullDayCursor: number | null = null;
+  let halfDayCursor: number | null = null;
+  let current = dateKeyToDate(simulationStart);
+  const last = dateKeyToDate(monthEnd);
+
+  while (current <= last) {
+    const dateKey = toDateKey(current.getFullYear(), current.getMonth() + 1, current.getDate());
+    const weekday = current.getDay();
+    const holiday = isHoliday(dateKey);
+    const outputDay = outputDays.get(dateKey);
+
+    let fullCursorBefore = fullDayCursor ?? countFullDayPharmacistSlotsBefore(dateKey);
+    const plannedFullDay = fullDayDutyFromCursor(dateKey, fullDayNames, fullCursorBefore);
+    const fullEdit = activeEdits.pharmacistFullDay.get(dateKey);
+    let actualFullDay = fullDayCursor == null
+      ? dayPharmacistNames(dateKey, weekday, holiday, current.getFullYear(), current.getMonth() + 1, options.weekendPharmacists)
+      : plannedFullDay.assigned;
+    if (fullEdit) {
+      actualFullDay = dutyNames(fullEdit.value);
+      fullDayCursor = cursorAfterDutyEdit(
+        fullDayNames, plannedFullDay.rotating, fullEdit.value, fullCursorBefore, plannedFullDay.nextCursor
+      );
+    } else if (fullDayCursor != null) {
+      fullDayCursor = plannedFullDay.nextCursor;
+    }
+    if (outputDay && hasFullDayEdits) outputDay.dayPharmacists = actualFullDay;
+
+    if (hasHalfDayEdits && (weekday === 6 || holiday)) {
+      const halfCursorBefore = halfDayCursor ?? halfDayCursorBefore(dateKey, options.weekendPharmacists);
+      const halfCount = weekday === 6 ? isFirstSaturday(dateKey) && !holiday ? 3 : 2 : 1;
+      const plannedHalfDay = takeCycledExcluding(halfDayNames, halfCursorBefore, halfCount, actualFullDay);
+      const halfEdit = activeEdits.pharmacistHalfDay.get(dateKey);
+      let actualHalfDay = halfDayCursor == null
+        ? upperMorningPharmacists(dateKey, weekday, holiday, options.weekendPharmacists)
+        : plannedHalfDay.assigned;
+      if (halfEdit) {
+        actualHalfDay = dutyNames(halfEdit.value);
+        halfDayCursor = cursorAfterDutyEdit(
+          halfDayNames, plannedHalfDay.assigned, halfEdit.value, halfCursorBefore, plannedHalfDay.nextStart
+        );
+      } else if (halfDayCursor != null) {
+        halfDayCursor = plannedHalfDay.nextStart;
+      }
+      if (outputDay) outputDay.upperMorningPharmacists = actualHalfDay;
+    }
+
+    const staffWeekendCount = weekday === 6 ? 2 : weekday === 0 && !holiday ? 1 : 0;
+    if (hasStaffWeekendEdits && staffWeekendCount > 0) {
+      const cursorBefore: number = staffWeekendCursor ?? WEEKEND_STAFF_ROTATION_START_INDEX + countWeekendStaffSlotsBefore(dateKey);
+      const planned = takeCycled(staffNames, cursorBefore, staffWeekendCount);
+      const edit = activeEdits.staffWeekend.get(dateKey);
+      let actual = planned;
+      if (edit) {
+        actual = dutyNames(edit.value);
+        staffWeekendCursor = cursorAfterDutyEdit(
+          staffNames, planned, edit.value, cursorBefore, cursorBefore + staffWeekendCount
+        );
+      } else if (staffWeekendCursor != null) {
+        staffWeekendCursor = cursorBefore + staffWeekendCount;
+      }
+      if (outputDay) {
+        if (weekday === 6) outputDay.morningStaff = actual;
+        else outputDay.lowerMorningStaff = actual;
+      }
+    }
+
+    if (hasStaffHolidayEdits && holiday && weekday !== 6) {
+      const cursorBefore: number = staffHolidayCursor ?? HOLIDAY_STAFF_ROTATION_START_INDEX + countHolidayStaffSlotsBefore(dateKey);
+      const planned = takeCycled(staffNames, cursorBefore, 1);
+      const edit = activeEdits.staffHoliday.get(dateKey);
+      let actual = planned;
+      if (edit) {
+        actual = dutyNames(edit.value);
+        staffHolidayCursor = cursorAfterDutyEdit(staffNames, planned, edit.value, cursorBefore, cursorBefore + 1);
+      } else if (staffHolidayCursor != null) {
+        staffHolidayCursor = cursorBefore + 1;
+      }
+      if (outputDay) outputDay.lowerMorningStaff = actual;
+    }
+
+    current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
+  }
+
+  return { ...schedule, days };
 }
 
 export function buildScheduleWeeks(schedule: MonthSchedule): ScheduleWeek[] {

@@ -14,6 +14,7 @@ import appIcon from "./assets/app-icon.png";
 import palette from "./assets/palette.png";
 import { buildMonthDays, CalendarEvent, dateKeyToDate, getHolidayName, isWeekend, toDateKey } from "./domain/calendar";
 import {
+  applyScheduleDutyEditContinuations,
   buildDefaultScheduleEventDates,
   buildMonthSchedule,
   buildNightPharmacistTurnEvents,
@@ -599,16 +600,21 @@ export default function App() {
   }, [assignmentNameLists.staffTimeNames, setAssignmentNameLists]);
 
   const schedule = useMemo(
-    () =>
-      buildMonthSchedule(year, month, {
+    () => {
+      const generatedSchedule = buildMonthSchedule(year, month, {
         eventDates,
         nightPharmacists: lists.nightPharmacists,
         nightPharmacistTurnDate,
         nightStaffPositions: lists.nightStaffPositions,
         weekendStaff: lists.weekendStaff,
         weekendPharmacists: lists.weekendPharmacists
-      }),
-    [eventDates, lists, month, nightPharmacistTurnDate, year]
+      });
+      return applyScheduleDutyEditContinuations(generatedSchedule, scheduleCellEdits, {
+        weekendStaff: lists.weekendStaff,
+        weekendPharmacists: lists.weekendPharmacists
+      });
+    },
+    [eventDates, lists, month, nightPharmacistTurnDate, scheduleCellEdits, year]
   );
 
   const calendarEvents: CalendarEvent[] = schedule.events;
