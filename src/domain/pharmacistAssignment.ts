@@ -35,6 +35,10 @@ export type PharmacistAssignment = {
 
 export type PharmacistAssignmentOptions = {
   pharmacistNames?: string[];
+  allDayFixedNames?: string[];
+  morningFixedNames?: string[];
+  afternoonFixedNames?: string[];
+  allDayRotatingNames?: string[];
   fixedNames?: string[];
   rotatingNames?: string[];
   fixedWorkNames?: string[];
@@ -430,6 +434,13 @@ export const defaultPharmacistNameList = sourceRows
 
 export const defaultRotatingPharmacistNames = defaultMorningRotatingPharmacistNames;
 
+export const defaultAllDayFixedPharmacistNames = defaultFixedWorkPharmacistNames;
+export const defaultMorningFixedPharmacistNames: string[] = [];
+export const defaultAfternoonFixedPharmacistNames = ["박현영"];
+export const defaultAllDayRotatingPharmacistNames = defaultRotatingPharmacistNames;
+export const defaultMorningRotatingGroupNames: string[] = [];
+export const defaultAfternoonRotatingGroupNames: string[] = [];
+
 function rotateRight<T>(items: T[], steps: number): T[] {
   if (items.length === 0) return [];
   const normalized = ((steps % items.length) + items.length) % items.length;
@@ -438,6 +449,58 @@ function rotateRight<T>(items: T[], steps: number): T[] {
 
 function monthOffsetFrom2026(year: number, month: number) {
   return (year - 2026) * 12 + (month - 8);
+}
+
+function uniqueNames(names: string[]) {
+  return names.filter((name, index) => names.indexOf(name) === index);
+}
+
+function sourceNamesForConfiguredNames(names: string[] | undefined, pharmacistNames: string[] | undefined) {
+  if (!names) return undefined;
+  const sourcePersonRows = sourceRows.filter((row) => (row.kind ?? "person") === "person");
+  const displayNames = pharmacistNames ?? sourcePersonRows.map((row) => row.values.name);
+  return names.map((name) => {
+    const displayIndex = displayNames.findIndex(
+      (displayName) => pharmacistBaseName(displayName) === pharmacistBaseName(name)
+    );
+    return displayIndex >= 0 ? sourcePersonRows[displayIndex]?.values.name ?? name : name;
+  });
+}
+
+export function effectivePharmacistRotationGroups(options: PharmacistAssignmentOptions = {}) {
+  const normalize = (names: string[] | undefined) => sourceNamesForConfiguredNames(names, options.pharmacistNames);
+  const allDayFixedNames = normalize(
+    options.allDayFixedNames ?? options.fixedWorkNames ?? options.fixedNames ?? defaultAllDayFixedPharmacistNames
+  ) ?? [];
+  const morningFixedNames = normalize(options.morningFixedNames ?? defaultMorningFixedPharmacistNames) ?? [];
+  const afternoonFixedNames = normalize(options.afternoonFixedNames ?? defaultAfternoonFixedPharmacistNames) ?? [];
+  const allDayRotatingNames = normalize(
+    options.allDayRotatingNames ?? options.rotatingNames ?? defaultAllDayRotatingPharmacistNames
+  ) ?? [];
+  const morningRotatingNames = normalize(options.morningRotatingNames ?? defaultMorningRotatingGroupNames) ?? [];
+  const afternoonRotatingNames = normalize(options.afternoonRotatingNames ?? defaultAfternoonRotatingGroupNames) ?? [];
+  const allDayFixed = new Set(allDayFixedNames.map(pharmacistBaseName));
+  const morningFixed = new Set(morningFixedNames.map(pharmacistBaseName));
+  const afternoonFixed = new Set(afternoonFixedNames.map(pharmacistBaseName));
+  const allowed = (name: string, fixedForPeriod: Set<string>) =>
+    !allDayFixed.has(pharmacistBaseName(name)) && !fixedForPeriod.has(pharmacistBaseName(name));
+
+  return {
+    allDayFixedNames,
+    morningFixedNames: morningFixedNames.filter((name) => !allDayFixed.has(pharmacistBaseName(name))),
+    afternoonFixedNames: afternoonFixedNames.filter((name) => !allDayFixed.has(pharmacistBaseName(name))),
+    allDayRotatingNames: allDayRotatingNames.filter((name) => !allDayFixed.has(pharmacistBaseName(name))),
+    morningRotatingNames: uniqueNames([
+      ...allDayRotatingNames,
+      ...morningRotatingNames,
+      ...afternoonFixedNames
+    ]).filter((name) => allowed(name, morningFixed)),
+    afternoonRotatingNames: uniqueNames([
+      ...allDayRotatingNames,
+      ...afternoonRotatingNames,
+      ...morningFixedNames
+    ]).filter((name) => allowed(name, afternoonFixed))
+  };
 }
 
 function taskPayload(values: Record<PharmacistAssignmentColumnKey, string>) {
@@ -464,28 +527,21 @@ function rotatePharmacistTaskValues(
   options: PharmacistAssignmentOptions = {}
 ) {
   const offset = monthOffsetFrom2026(year, month);
-  const fixedWorkNames = options.fixedWorkNames?.length
-    ? options.fixedWorkNames
-    : options.fixedNames?.length
-      ? options.fixedNames
-      : defaultFixedWorkPharmacistNames;
-  const configuredMorningNames = options.morningRotatingNames?.length
-    ? options.morningRotatingNames
-    : options.rotatingNames?.length
-      ? options.rotatingNames
-      : defaultMorningRotatingPharmacistNames;
+  const groups = effectivePharmacistRotationGroups(options);
+  const fixedWorkNames = groups.allDayFixedNames;
+  const fixedWorkNameSet = new Set(fixedWorkNames.map(pharmacistBaseName));
+  const configuredMorningNames = groups.morningRotatingNames;
   const morningNames =
     offset >= 2 && configuredMorningNames.includes("오아라")
       ? configuredMorningNames.includes("송예리")
         ? configuredMorningNames
         : configuredMorningNames.flatMap((name) => (name === "오아라" ? [name, "송예리"] : [name]))
       : configuredMorningNames.filter((name) => name !== "송예리");
-  const afternoonNames = options.afternoonRotatingNames?.length
-    ? options.afternoonRotatingNames
-    : defaultAfternoonRotatingPharmacistNames;
-  const lunchNames = options.lunchRotatingNames?.length
-    ? options.lunchRotatingNames
-    : defaultLunchRotatingPharmacistNames;
+  const afternoonNames = groups.afternoonRotatingNames;
+  const lunchNames = sourceNamesForConfiguredNames(
+    options.lunchRotatingNames ?? defaultLunchRotatingPharmacistNames,
+    options.pharmacistNames
+  ) ?? [];
   const defaultSubNames =
     year === 2026 && month >= 7 && month <= 9
       ? ["오아라"]
@@ -494,7 +550,18 @@ function rotatePharmacistTaskValues(
         : [];
   const temporarySubNames = options.anticancerSubNames ?? defaultSubNames;
   const temporaryFixedNames = new Set(temporarySubNames);
+  const morningFixedNames = new Set(groups.morningFixedNames.map(pharmacistBaseName));
+  const afternoonFixedNames = new Set(groups.afternoonFixedNames.map(pharmacistBaseName));
   const nextRows = rows.map((row) => ({ ...row, values: { ...row.values } }));
+  const parkHyunyoung = nextRows.find(
+    (row) => pharmacistBaseName(row.values.name) === "박현영"
+  );
+  if (parkHyunyoung) {
+    parkHyunyoung.values.lunchEarly = "식사";
+    parkHyunyoung.values.lunchLate = "";
+    parkHyunyoung.values.afternoonA = "NST 임상업무";
+    parkHyunyoung.values.afternoonB = "";
+  }
 
   const canonicalSubRow = nextRows.find(
     (row) => pharmacistBaseName(row.values.name) === "김수빈"
@@ -533,11 +600,20 @@ function rotatePharmacistTaskValues(
     }
   });
 
-  function rotateColumns(names: string[], keys: PharmacistAssignmentColumnKey[]) {
+  function rotateColumns(
+    names: string[],
+    keys: PharmacistAssignmentColumnKey[],
+    fixedForPeriod = new Set<string>()
+  ) {
     const targets = nextRows.filter((row) => {
       if ((row.kind ?? "person") !== "person") return false;
       const baseName = pharmacistBaseName(row.values.name);
-      return names.includes(row.values.name) && !fixedWorkNames.includes(baseName) && !temporaryFixedNames.has(baseName);
+      return (
+        names.includes(row.values.name) &&
+        !fixedWorkNameSet.has(baseName) &&
+        !fixedForPeriod.has(baseName) &&
+        !temporaryFixedNames.has(baseName)
+      );
     });
     const payloads = rotateRight(
       targets.map((row) => Object.fromEntries(keys.map((key) => [key, row.values[key]]))),
@@ -569,32 +645,53 @@ function rotatePharmacistTaskValues(
     }
   }
 
-  rotateColumns(morningNames, ["early", "morningSupport", "morningMain"]);
-  rotateColumns(afternoonNames, ["afternoonA", "afternoonB"]);
+  rotateColumns(morningNames, ["early", "morningSupport", "morningMain"], morningFixedNames);
+  rotateColumns(afternoonNames, ["afternoonA", "afternoonB"], afternoonFixedNames);
   rotateColumns(lunchNames, ["lunchEarly", "lunchLate"]);
 
   const hasMorningOutpatientPharmacy = (row: (typeof nextRows)[number]) =>
     /외래약국2?/.test(`${row.values.early} ${row.values.morningSupport} ${row.values.morningMain}`);
   const hasAfternoonOutpatientPharmacy = (row: (typeof nextRows)[number]) =>
     /외래약국/.test(`${row.values.lunchLate} ${row.values.afternoonA} ${row.values.afternoonB}`);
+  const isMorningRotationCandidate = (row: (typeof nextRows)[number]) => {
+    const baseName = pharmacistBaseName(row.values.name);
+    return (
+      morningNames.includes(row.values.name) &&
+      !fixedWorkNameSet.has(baseName) &&
+      !morningFixedNames.has(baseName) &&
+      !temporaryFixedNames.has(baseName)
+    );
+  };
+  const isAfternoonRotationCandidate = (row: (typeof nextRows)[number]) => {
+    const baseName = pharmacistBaseName(row.values.name);
+    return (
+      afternoonNames.includes(row.values.name) &&
+      !fixedWorkNameSet.has(baseName) &&
+      !afternoonFixedNames.has(baseName) &&
+      !temporaryFixedNames.has(baseName)
+    );
+  };
   const septemberAfternoonOffset = (year - 2026) * 12 + (month - 9);
   const afternoonOutpatientOrder = rotateRight(afternoonNames, -septemberAfternoonOffset);
   const preferredAfternoonOutpatientName = afternoonOutpatientOrder.find((name) => {
     const baseName = pharmacistBaseName(name);
-    return !fixedWorkNames.includes(baseName) && !temporaryFixedNames.has(baseName) && baseName !== "박현영";
+    return !fixedWorkNameSet.has(baseName) && !temporaryFixedNames.has(baseName) && baseName !== "박현영";
   });
   const preferredAfternoonOutpatient = nextRows.find(
     (row) => row.values.name === preferredAfternoonOutpatientName
   );
 
-  if (preferredAfternoonOutpatient && hasMorningOutpatientPharmacy(preferredAfternoonOutpatient)) {
+  if (
+    preferredAfternoonOutpatient &&
+    isAfternoonRotationCandidate(preferredAfternoonOutpatient) &&
+    isMorningRotationCandidate(preferredAfternoonOutpatient) &&
+    hasMorningOutpatientPharmacy(preferredAfternoonOutpatient)
+  ) {
     const morningReplacement = nextRows.find((row) => {
       const baseName = pharmacistBaseName(row.values.name);
       return (
-        morningNames.includes(row.values.name) &&
+        isMorningRotationCandidate(row) &&
         row !== preferredAfternoonOutpatient &&
-        !fixedWorkNames.includes(baseName) &&
-        !temporaryFixedNames.has(baseName) &&
         baseName !== "박현영" &&
         !hasMorningOutpatientPharmacy(row)
       );
@@ -613,7 +710,7 @@ function rotatePharmacistTaskValues(
     return (
       (row.kind ?? "person") === "person" &&
       lunchNames.includes(row.values.name) &&
-      !fixedWorkNames.includes(baseName) &&
+      !fixedWorkNameSet.has(baseName) &&
       !temporaryFixedNames.has(baseName) &&
       baseName !== "박현영"
     );
@@ -636,16 +733,6 @@ function rotatePharmacistTaskValues(
     });
   });
 
-  const parkHyunyoung = nextRows.find(
-    (row) => pharmacistBaseName(row.values.name) === "박현영"
-  );
-  if (parkHyunyoung) {
-    parkHyunyoung.values.lunchEarly = "식사";
-    parkHyunyoung.values.lunchLate = "";
-    parkHyunyoung.values.afternoonA = "NST 임상업무";
-    parkHyunyoung.values.afternoonB = "";
-  }
-
   const kimJihye = nextRows.find((row) => pharmacistBaseName(row.values.name) === "김지혜");
   const kimYeonji = nextRows.find((row) => pharmacistBaseName(row.values.name) === "김연지");
   const swapFixedLunchWork = ((year - 2026) * 12 + (month - 9)) % 2 !== 0;
@@ -654,17 +741,17 @@ function rotatePharmacistTaskValues(
     kimYeonji.values.lunchLate = swapFixedLunchWork ? "7988/처방감사" : "외래/퇴원";
   }
 
-  const afternoonOutpatientHolder = nextRows.find((row) =>
-    /외래약국/.test(`${row.values.lunchLate} ${row.values.afternoonA} ${row.values.afternoonB}`)
+  const afternoonOutpatientHolder = nextRows.find(
+    (row) =>
+      isAfternoonRotationCandidate(row) &&
+      /외래약국/.test(`${row.values.lunchLate} ${row.values.afternoonA} ${row.values.afternoonB}`)
   );
   const afternoonOutpatientTargetName = afternoonOutpatientOrder.find((name) => {
     const row = nextRows.find((candidate) => candidate.values.name === name);
     if (!row) return false;
-    const baseName = pharmacistBaseName(row.values.name);
     return (
-      !fixedWorkNames.includes(baseName) &&
-      !temporaryFixedNames.has(baseName) &&
-      baseName !== "박현영" &&
+      isAfternoonRotationCandidate(row) &&
+      pharmacistBaseName(row.values.name) !== "박현영" &&
       !hasMorningOutpatientPharmacy(row)
     );
   });
@@ -682,6 +769,15 @@ function rotatePharmacistTaskValues(
       afternoonOutpatientHolder.values[key] = afternoonOutpatientTarget.values[key];
       afternoonOutpatientTarget.values[key] = current;
     });
+  }
+
+  const parkHasFixedAfternoonWork =
+    fixedWorkNameSet.has("박현영") || afternoonFixedNames.has("박현영");
+  if (parkHyunyoung && parkHasFixedAfternoonWork) {
+    parkHyunyoung.values.lunchEarly = "식사";
+    parkHyunyoung.values.lunchLate = "";
+    parkHyunyoung.values.afternoonA = "NST 임상업무";
+    parkHyunyoung.values.afternoonB = "";
   }
 
   return nextRows.map((row) => {

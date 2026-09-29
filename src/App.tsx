@@ -55,9 +55,14 @@ import {
 } from "./domain/assignmentViews";
 import {
   buildPharmacistAssignment,
+  defaultAfternoonFixedPharmacistNames,
+  defaultAfternoonRotatingGroupNames,
+  defaultAllDayFixedPharmacistNames,
+  defaultAllDayRotatingPharmacistNames,
   defaultFixedWorkPharmacistNames,
+  defaultMorningFixedPharmacistNames,
+  defaultMorningRotatingGroupNames,
   defaultPharmacistNameList,
-  defaultRotatingPharmacistNames,
   PharmacistAssignment,
   PharmacistAssignmentColumnKey
 } from "./domain/pharmacistAssignment";
@@ -79,8 +84,14 @@ type AssignmentNameLists = {
   staffTimeNames: string[];
   staffEarlyNames: string[];
   pharmacistNames: string[];
-  fixedPharmacistNames: string[];
-  rotatingPharmacistNames: string[];
+  allDayFixedPharmacistNames: string[];
+  morningFixedPharmacistNames: string[];
+  afternoonFixedPharmacistNames: string[];
+  allDayRotatingPharmacistNames: string[];
+  morningRotatingPharmacistNames: string[];
+  afternoonRotatingPharmacistNames: string[];
+  fixedPharmacistNames?: string[];
+  rotatingPharmacistNames?: string[];
 };
 
 type AnticancerSubPeriod = {
@@ -108,12 +119,12 @@ const staffAssignmentAugustRuleMigrationKey = "pharmacy-app-staff-assignment-aug
 const staffEarlyAssignmentOrderMigrationKey = "pharmacy-app-staff-early-order-august-2026";
 const legacyStaffEarlyAssignmentOrder = ["김지현", "김동희", "박지숙"];
 const staffHelperDuplicateCleanupMigrationKey = "pharmacy-app-staff-helper-duplicate-cleanup-v2";
+const pharmacistHalfDayGroupMigrationKey = "pharmacy-app-pharmacist-half-day-groups-v1";
 const pharmacistFixedWorkGroupMigrationKey = "pharmacy-app-pharmacist-fixed-work-group-v2";
 const legacyPharmacistFixedWorkGroup = ["김옥선", "송은호", "최윤영", "김지혜", "신진영", "오아라", "이정화", "안혜정", "김연지", "이호연", "박윤선"];
-const pharmacistRotatingGroupMigrationKey = "pharmacy-app-pharmacist-rotating-group-v2";
+const legacyPharmacistRotatingGroup = ["이지은", "송예리", "박혜정", "김경원", "김수빈", "박주영 / (~5시 30분)"];
 const pharmacistParkHyunyoungRuleMigrationKey = "pharmacy-app-pharmacist-park-hyunyoung-rules-v1";
 const pharmacistFixedLunchPairMigrationKey = "pharmacy-app-pharmacist-fixed-lunch-pair-v1";
-const legacyPharmacistRotatingGroup = ["이지은", "송예리", "박혜정", "김경원", "김수빈", "박주영 / (~5시 30분)"];
 const staffTaskDetailMigrationKey = "pharmacy-app-staff-task-detail-swap";
 const documentColumnEditsStorageKey = "pharmacy-app-document-column-edits";
 const legacyStaffTaskCellValues: Record<string, string> = {
@@ -490,8 +501,12 @@ export default function App() {
       staffTimeNames: defaultStaffTimeNames,
       staffEarlyNames: defaultStaffEarlyNames,
       pharmacistNames: defaultPharmacistNameList,
-      fixedPharmacistNames: defaultFixedWorkPharmacistNames,
-      rotatingPharmacistNames: defaultRotatingPharmacistNames
+      allDayFixedPharmacistNames: defaultAllDayFixedPharmacistNames,
+      morningFixedPharmacistNames: defaultMorningFixedPharmacistNames,
+      afternoonFixedPharmacistNames: defaultAfternoonFixedPharmacistNames,
+      allDayRotatingPharmacistNames: defaultAllDayRotatingPharmacistNames.filter((name) => !name.startsWith("박현영")),
+      morningRotatingPharmacistNames: defaultMorningRotatingGroupNames,
+      afternoonRotatingPharmacistNames: defaultAfternoonRotatingGroupNames
     }
   );
   const [pharmacistNameChanges, setPharmacistNameChanges] = useLocalStorageState<Record<string, string[]>>(
@@ -511,38 +526,35 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (window.localStorage.getItem(pharmacistFixedWorkGroupMigrationKey) === "applied") return;
+    if (window.localStorage.getItem(pharmacistHalfDayGroupMigrationKey) === "applied") return;
 
-    const usesLegacyFixedGroup =
-      assignmentNameLists.fixedPharmacistNames.length === legacyPharmacistFixedWorkGroup.length &&
-      assignmentNameLists.fixedPharmacistNames.every((name, index) => name === legacyPharmacistFixedWorkGroup[index]);
-
-    if (usesLegacyFixedGroup) {
-      setAssignmentNameLists((current) => ({
+    setAssignmentNameLists((current) => {
+      if (Array.isArray(current.allDayFixedPharmacistNames)) return current;
+      const previousFixed = current.fixedPharmacistNames ?? defaultFixedWorkPharmacistNames;
+      const previousRotating = current.rotatingPharmacistNames ?? defaultAllDayRotatingPharmacistNames;
+      const allDayFixed =
+        previousFixed.length === legacyPharmacistFixedWorkGroup.length &&
+        previousFixed.every((name, index) => name === legacyPharmacistFixedWorkGroup[index]) &&
+        window.localStorage.getItem(pharmacistFixedWorkGroupMigrationKey) !== "applied"
+          ? defaultAllDayFixedPharmacistNames
+          : previousFixed;
+      const allDayRotating =
+        previousRotating.length === legacyPharmacistRotatingGroup.length &&
+        previousRotating.every((name, index) => name === legacyPharmacistRotatingGroup[index])
+          ? defaultAllDayRotatingPharmacistNames
+          : previousRotating;
+      return {
         ...current,
-        fixedPharmacistNames: defaultFixedWorkPharmacistNames
-      }));
-    }
-
-    window.localStorage.setItem(pharmacistFixedWorkGroupMigrationKey, "applied");
-  }, [assignmentNameLists.fixedPharmacistNames, setAssignmentNameLists]);
-
-  useEffect(() => {
-    if (window.localStorage.getItem(pharmacistRotatingGroupMigrationKey) === "applied") return;
-
-    const usesLegacyRotatingGroup =
-      assignmentNameLists.rotatingPharmacistNames.length === legacyPharmacistRotatingGroup.length &&
-      assignmentNameLists.rotatingPharmacistNames.every((name, index) => name === legacyPharmacistRotatingGroup[index]);
-
-    if (usesLegacyRotatingGroup) {
-      setAssignmentNameLists((current) => ({
-        ...current,
-        rotatingPharmacistNames: defaultRotatingPharmacistNames
-      }));
-    }
-
-    window.localStorage.setItem(pharmacistRotatingGroupMigrationKey, "applied");
-  }, [assignmentNameLists.rotatingPharmacistNames, setAssignmentNameLists]);
+        allDayFixedPharmacistNames: allDayFixed,
+        morningFixedPharmacistNames: defaultMorningFixedPharmacistNames,
+        afternoonFixedPharmacistNames: defaultAfternoonFixedPharmacistNames,
+        allDayRotatingPharmacistNames: allDayRotating.filter((name) => !name.startsWith("박현영")),
+        morningRotatingPharmacistNames: defaultMorningRotatingGroupNames,
+        afternoonRotatingPharmacistNames: defaultAfternoonRotatingGroupNames
+      };
+    });
+    window.localStorage.setItem(pharmacistHalfDayGroupMigrationKey, "applied");
+  }, [setAssignmentNameLists]);
 
   useEffect(() => {
     if (window.localStorage.getItem(staffAssignmentAugustRuleMigrationKey) === "applied") return;
@@ -630,13 +642,21 @@ export default function App() {
   const pharmacistAssignment = useMemo(
     () => buildPharmacistAssignment(year, month, {
       pharmacistNames: effectivePharmacistNames(defaultPharmacistNameList, pharmacistNameChanges, year, month),
-      fixedNames: assignmentNameLists.fixedPharmacistNames,
-      rotatingNames: assignmentNameLists.rotatingPharmacistNames,
+      allDayFixedNames: assignmentNameLists.allDayFixedPharmacistNames,
+      morningFixedNames: assignmentNameLists.morningFixedPharmacistNames,
+      afternoonFixedNames: assignmentNameLists.afternoonFixedPharmacistNames,
+      allDayRotatingNames: assignmentNameLists.allDayRotatingPharmacistNames,
+      morningRotatingNames: assignmentNameLists.morningRotatingPharmacistNames,
+      afternoonRotatingNames: assignmentNameLists.afternoonRotatingPharmacistNames,
       anticancerSubNames: activeAnticancerSubNames(anticancerSubPeriods, year, month)
     }),
     [
-      assignmentNameLists.fixedPharmacistNames,
-      assignmentNameLists.rotatingPharmacistNames,
+      assignmentNameLists.allDayFixedPharmacistNames,
+      assignmentNameLists.morningFixedPharmacistNames,
+      assignmentNameLists.afternoonFixedPharmacistNames,
+      assignmentNameLists.allDayRotatingPharmacistNames,
+      assignmentNameLists.morningRotatingPharmacistNames,
+      assignmentNameLists.afternoonRotatingPharmacistNames,
       anticancerSubPeriods,
       pharmacistNameChanges,
       month,
@@ -1133,6 +1153,45 @@ function AssignmentTab({
   const [selectedView, setSelectedView] = useState<AssignmentViewId>("staff");
   const selectedPrintView =
     assignmentPrintViews.find((view) => view.id === selectedView) ?? assignmentPrintViews[0];
+  const pharmacistGroupLists: AssignmentNameLists = {
+    ...assignmentNameLists,
+    allDayFixedPharmacistNames:
+      assignmentNameLists.allDayFixedPharmacistNames ?? defaultAllDayFixedPharmacistNames,
+    morningFixedPharmacistNames:
+      assignmentNameLists.morningFixedPharmacistNames ?? defaultMorningFixedPharmacistNames,
+    afternoonFixedPharmacistNames:
+      assignmentNameLists.afternoonFixedPharmacistNames ?? defaultAfternoonFixedPharmacistNames,
+    allDayRotatingPharmacistNames:
+      assignmentNameLists.allDayRotatingPharmacistNames ?? defaultAllDayRotatingPharmacistNames.filter((name) => !name.startsWith("박현영")),
+    morningRotatingPharmacistNames:
+      assignmentNameLists.morningRotatingPharmacistNames ?? defaultMorningRotatingGroupNames,
+    afternoonRotatingPharmacistNames:
+      assignmentNameLists.afternoonRotatingPharmacistNames ?? defaultAfternoonRotatingGroupNames
+  };
+  const pharmacistBaseName = (name: string) => name.split("/")[0].trim();
+  const allDayFixedNames = new Set(pharmacistGroupLists.allDayFixedPharmacistNames.map(pharmacistBaseName));
+  const morningFixedNames = new Set(pharmacistGroupLists.morningFixedPharmacistNames.map(pharmacistBaseName));
+  const afternoonFixedNames = new Set(pharmacistGroupLists.afternoonFixedPharmacistNames.map(pharmacistBaseName));
+  const anticancerSubNameSet = new Set(anticancerSubNames);
+  const uniqueGroupNames = (names: string[]) => names.filter((name, index) => names.indexOf(name) === index);
+  const effectiveMorningRotatingNames = uniqueGroupNames([
+    ...pharmacistGroupLists.allDayRotatingPharmacistNames,
+    ...pharmacistGroupLists.morningRotatingPharmacistNames,
+    ...pharmacistGroupLists.afternoonFixedPharmacistNames
+  ]).filter((name) =>
+    !allDayFixedNames.has(pharmacistBaseName(name)) &&
+    !morningFixedNames.has(pharmacistBaseName(name)) &&
+    !anticancerSubNameSet.has(pharmacistBaseName(name))
+  );
+  const effectiveAfternoonRotatingNames = uniqueGroupNames([
+    ...pharmacistGroupLists.allDayRotatingPharmacistNames,
+    ...pharmacistGroupLists.afternoonRotatingPharmacistNames,
+    ...pharmacistGroupLists.morningFixedPharmacistNames
+  ]).filter((name) =>
+    !allDayFixedNames.has(pharmacistBaseName(name)) &&
+    !afternoonFixedNames.has(pharmacistBaseName(name)) &&
+    !anticancerSubNameSet.has(pharmacistBaseName(name))
+  );
 
   function getStaffEditValue(
     row: ReturnType<typeof rotateStaffAssignments>[number],
@@ -1429,25 +1488,53 @@ function AssignmentTab({
               onChange={(value) => onPharmacistNamesChange(textToList(value))}
             />
             <TextListEditor
-              title="업무 고정 약사 그룹"
-              value={listToText(assignmentNameLists.fixedPharmacistNames)}
+              title="업무 고정 약사 그룹 · 종일"
+              value={listToText(pharmacistGroupLists.allDayFixedPharmacistNames)}
               onChange={(value) =>
-                setAssignmentNameLists({
-                  ...assignmentNameLists,
-                  fixedPharmacistNames: textToList(value)
-                })
+                setAssignmentNameLists({ ...assignmentNameLists, allDayFixedPharmacistNames: textToList(value) })
               }
             />
             <TextListEditor
-              title="업무 순환 약사 그룹"
-              value={listToText(assignmentNameLists.rotatingPharmacistNames)}
+              title="업무 고정 약사 그룹 · 오전"
+              value={listToText(pharmacistGroupLists.morningFixedPharmacistNames)}
               onChange={(value) =>
-                setAssignmentNameLists({
-                  ...assignmentNameLists,
-                  rotatingPharmacistNames: textToList(value)
-                })
+                setAssignmentNameLists({ ...assignmentNameLists, morningFixedPharmacistNames: textToList(value) })
               }
             />
+            <TextListEditor
+              title="업무 고정 약사 그룹 · 오후"
+              value={listToText(pharmacistGroupLists.afternoonFixedPharmacistNames)}
+              onChange={(value) =>
+                setAssignmentNameLists({ ...assignmentNameLists, afternoonFixedPharmacistNames: textToList(value) })
+              }
+            />
+            <TextListEditor
+              title="업무 순환 약사 그룹 · 종일"
+              value={listToText(pharmacistGroupLists.allDayRotatingPharmacistNames)}
+              onChange={(value) =>
+                setAssignmentNameLists({ ...assignmentNameLists, allDayRotatingPharmacistNames: textToList(value) })
+              }
+            />
+            <TextListEditor
+              title="업무 순환 약사 그룹 · 오전"
+              value={listToText(pharmacistGroupLists.morningRotatingPharmacistNames)}
+              onChange={(value) =>
+                setAssignmentNameLists({ ...assignmentNameLists, morningRotatingPharmacistNames: textToList(value) })
+              }
+            />
+            <TextListEditor
+              title="업무 순환 약사 그룹 · 오후"
+              value={listToText(pharmacistGroupLists.afternoonRotatingPharmacistNames)}
+              onChange={(value) =>
+                setAssignmentNameLists({ ...assignmentNameLists, afternoonRotatingPharmacistNames: textToList(value) })
+              }
+            />
+            <div className="text-list-editor">
+              <strong>자동 적용 순환 그룹</strong>
+              <small>오전: {effectiveMorningRotatingNames.join(", ") || "없음"}</small>
+              <small>오후: {effectiveAfternoonRotatingNames.join(", ") || "없음"}</small>
+              <small>종일 고정이 우선하며, 오전·오후 고정 약사는 반대 시간대 순환 그룹에 자동 포함됩니다. 점심 업무는 기존 규칙을 유지합니다.</small>
+            </div>
             <div className="text-list-editor anticancer-sub-group">
               <strong>항암제 서브 약사 그룹</strong>
               <div className="anticancer-sub-options">

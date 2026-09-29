@@ -4,6 +4,7 @@ import {
   defaultFixedPharmacistNames,
   defaultPharmacistNameList,
   defaultRotatingPharmacistNames,
+  effectivePharmacistRotationGroups,
   pharmacistAssignmentColumns
 } from "./pharmacistAssignment";
 
@@ -81,6 +82,132 @@ describe("pharmacist assignment template", () => {
     expect(rotatingOctober?.cells.early.value).not.toBe(rotatingSeptember?.cells.early.value);
   });
 
+  it("keeps all-day fixed work while rotating the opposite period for half-day fixed pharmacists", () => {
+    const options = {
+      allDayFixedNames: ["김옥선"],
+      morningFixedNames: ["오아라"],
+      afternoonFixedNames: ["최윤영"],
+      allDayRotatingNames: ["이지은", "박혜정"],
+      morningRotatingNames: ["김경원"],
+      afternoonRotatingNames: ["김수빈"],
+      anticancerSubNames: []
+    };
+    const september = buildPharmacistAssignment(2026, 9, options);
+    const october = buildPharmacistAssignment(2026, 10, options);
+    const person = (assignment: ReturnType<typeof buildPharmacistAssignment>, name: string) =>
+      assignment.rows.find((row) => row.cells.name.value.startsWith(name));
+
+    expect(person(october, "김옥선")?.cells.early.value).toBe(person(september, "김옥선")?.cells.early.value);
+    expect(person(october, "오아라")?.cells.early.value).toBe(person(september, "오아라")?.cells.early.value);
+    expect(person(october, "오아라")?.cells.afternoonA.value).not.toBe(person(september, "오아라")?.cells.afternoonA.value);
+    expect(person(october, "박현영")?.cells.afternoonA.value).toBe("NST 임상업무");
+    expect(person(october, "최윤영")?.cells.early.value).not.toBe(person(september, "최윤영")?.cells.early.value);
+    expect(effectivePharmacistRotationGroups(options).morningRotatingNames).toContain("최윤영");
+    expect(effectivePharmacistRotationGroups(options).afternoonRotatingNames).toContain("오아라");
+  });
+
+  it("honors empty groups and lets all-day fixed membership take precedence over overlap", () => {
+    const noRotation = {
+      allDayFixedNames: [],
+      morningFixedNames: [],
+      afternoonFixedNames: [],
+      allDayRotatingNames: [],
+      morningRotatingNames: [],
+      afternoonRotatingNames: [],
+      anticancerSubNames: []
+    };
+    const september = buildPharmacistAssignment(2026, 9, noRotation);
+    const october = buildPharmacistAssignment(2026, 10, noRotation);
+    const septemberLee = september.rows.find((row) => row.cells.name.value === "이지은");
+    const octoberLee = october.rows.find((row) => row.cells.name.value === "이지은");
+    expect(octoberLee?.cells.early.value).toBe(septemberLee?.cells.early.value);
+
+    const overlap = {
+      ...noRotation,
+      allDayFixedNames: ["이지은"],
+      allDayRotatingNames: ["이지은", "박혜정"],
+      morningRotatingNames: ["이지은", "박혜정"],
+      afternoonRotatingNames: ["이지은", "박혜정"]
+    };
+    const overlapSeptember = buildPharmacistAssignment(2026, 9, overlap);
+    const overlapOctober = buildPharmacistAssignment(2026, 10, overlap);
+    const overlapSeptemberLee = overlapSeptember.rows.find((row) => row.cells.name.value === "이지은");
+    const overlapOctoberLee = overlapOctober.rows.find((row) => row.cells.name.value === "이지은");
+    expect(overlapOctoberLee?.cells.early.value).toBe(overlapSeptemberLee?.cells.early.value);
+    expect(overlapOctoberLee?.cells.afternoonA.value).toBe(overlapSeptemberLee?.cells.afternoonA.value);
+  });
+
+  it("continues half-day rotations across years and does not move fixed-period outpatient work", () => {
+    const options = {
+      allDayFixedNames: [],
+      morningFixedNames: ["오아라"],
+      afternoonFixedNames: ["김경원", "박현영"],
+      allDayRotatingNames: ["이지은", "박혜정", "김경원"],
+      morningRotatingNames: ["김수빈"],
+      afternoonRotatingNames: ["김수빈"],
+      anticancerSubNames: []
+    };
+    const december = buildPharmacistAssignment(2026, 12, options);
+    const january = buildPharmacistAssignment(2027, 1, options);
+    const person = (assignment: ReturnType<typeof buildPharmacistAssignment>, name: string) =>
+      assignment.rows.find((row) => row.cells.name.value.startsWith(name));
+    const decemberLee = person(december, "이지은");
+    const januaryLee = person(january, "이지은");
+    const decemberOh = person(december, "오아라");
+    const januaryOh = person(january, "오아라");
+    const decemberKim = person(december, "김경원");
+    const januaryKim = person(january, "김경원");
+
+    expect(januaryLee?.cells.early.value).not.toBe(decemberLee?.cells.early.value);
+    expect(januaryOh?.cells.early.value).toBe(decemberOh?.cells.early.value);
+    expect(januaryKim?.cells.afternoonA.value).toBe(decemberKim?.cells.afternoonA.value);
+  });
+
+  it("does not overwrite a morning-fixed pharmacist during afternoon outpatient correction", () => {
+    const options = {
+      allDayFixedNames: [],
+      morningFixedNames: ["이지은"],
+      afternoonFixedNames: ["박현영"],
+      allDayRotatingNames: ["이지은", "박혜정", "김경원"],
+      morningRotatingNames: ["김수빈"],
+      afternoonRotatingNames: ["김수빈"],
+      anticancerSubNames: []
+    };
+    const september = buildPharmacistAssignment(2026, 9, options);
+    const leeJieun = september.rows.find((row) => row.cells.name.value.startsWith("이지은"));
+
+    expect(leeJieun?.cells.early.value).toBe("정규 경구61W, 72W(오전9시)");
+  });
+
+  it("uses the current display name to find the stable source row for group membership", () => {
+    const names = [...defaultPharmacistNameList];
+    names[5] = "새 이지은";
+    const september = buildPharmacistAssignment(2026, 9, {
+      pharmacistNames: names,
+      allDayFixedNames: ["새 이지은"],
+      allDayRotatingNames: ["새 이지은", "박혜정"],
+      morningFixedNames: [],
+      afternoonFixedNames: [],
+      morningRotatingNames: [],
+      afternoonRotatingNames: [],
+      anticancerSubNames: []
+    });
+    const october = buildPharmacistAssignment(2026, 10, {
+      pharmacistNames: names,
+      allDayFixedNames: ["새 이지은"],
+      allDayRotatingNames: ["새 이지은", "박혜정"],
+      morningFixedNames: [],
+      afternoonFixedNames: [],
+      morningRotatingNames: [],
+      afternoonRotatingNames: [],
+      anticancerSubNames: []
+    });
+
+    const septemberLee = september.rows.find((row) => row.cells.name.value === "새 이지은");
+    const octoberLee = october.rows.find((row) => row.cells.name.value === "새 이지은");
+    expect(octoberLee?.cells.early.value).toBe(septemberLee?.cells.early.value);
+  });
+
   it("uses an editable pharmacist name list without moving row positions", () => {
     const customNames = [...defaultPharmacistNameList];
     customNames[5] = "순환약사A";
@@ -108,6 +235,24 @@ describe("pharmacist assignment template", () => {
       expect(park?.cells.afternoonA.value).toBe("NST 임상업무");
       expect(park?.cells.afternoonB.value).toBe("");
     });
+  });
+
+  it("rotates Park Hyunyoung's afternoon work when she is only morning-fixed", () => {
+    const options = {
+      allDayFixedNames: [],
+      morningFixedNames: ["박현영"],
+      afternoonFixedNames: [],
+      allDayRotatingNames: ["이지은", "박혜정", "박현영"],
+      morningRotatingNames: [],
+      afternoonRotatingNames: [],
+      anticancerSubNames: []
+    };
+    const september = buildPharmacistAssignment(2026, 9, options);
+    const october = buildPharmacistAssignment(2026, 10, options);
+    const park = (assignment: ReturnType<typeof buildPharmacistAssignment>) =>
+      assignment.rows.find((row) => row.cells.name.value.startsWith("박현영"));
+
+    expect(park(october)?.cells.afternoonA.value).not.toBe(park(september)?.cells.afternoonA.value);
   });
 
   it("assigns the anticancer sub work to Oh Ara through September without moving it to another rotating pharmacist", () => {
