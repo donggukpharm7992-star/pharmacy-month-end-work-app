@@ -3,6 +3,7 @@ import {
   PharmacistAssignmentBaseline,
   PharmacistAssignmentColumnKey,
   PharmacistRotationAnchor,
+  hasFixedPharmacistLunch,
   pharmacistAssignmentColumns
 } from "./pharmacistAssignment";
 
@@ -27,6 +28,8 @@ export function pharmacistCellValue(
   columnKey: PharmacistAssignmentColumnKey,
   fallback: string
 ) {
+  if (hasFixedPharmacistLunch(rowId) && columnKey === "lunchEarly") return "식사";
+  if (hasFixedPharmacistLunch(rowId) && columnKey === "lunchLate") return "";
   const monthlyValue = edits[pharmacistMonthlyEditKey(year, month, rowId, columnKey)];
   if (monthlyValue !== undefined) return monthlyValue;
   const isOctoberOrEarlier = year < 2026 || (year === 2026 && month <= 10);

@@ -145,6 +145,36 @@ describe("pharmacist assignment template", () => {
     expect(person(november, "박혜정")?.cells.afternoonA.value).toBe(baseline["park-hyejung"].afternoonA);
   });
 
+  it("keeps afternoon-fixed work in place while only morning work rotates", () => {
+    const options = {
+      allDayFixedNames: [],
+      morningFixedNames: [],
+      afternoonFixedNames: ["안혜정", "박현영"],
+      allDayRotatingNames: ["이지은", "박혜정"],
+      morningRotatingNames: [],
+      afternoonRotatingNames: [],
+      anticancerSubNames: []
+    };
+    const october = buildPharmacistAssignment(2026, 10, options);
+    const baseline = octoberBaseline(october);
+    baseline["ahn-hyejung"].early = "안혜정 오전 순환 업무";
+    baseline["ahn-hyejung"].afternoonA = "안혜정 오후 고정 업무";
+    baseline["park-hyunyoung"].early = "박현영 오전 순환 업무";
+    baseline["park-hyunyoung"].afternoonA = "박현영 오후 고정 업무";
+
+    const november = buildPharmacistAssignment(2026, 11, {
+      ...options,
+      rotationAnchor: { year: 2026, month: 10, baseline }
+    });
+    const ahn = november.rows.find((row) => row.id === "ahn-hyejung");
+    const park = november.rows.find((row) => row.id === "park-hyunyoung");
+
+    expect(ahn?.cells.afternoonA.value).toBe("안혜정 오후 고정 업무");
+    expect(park?.cells.afternoonA.value).toBe("박현영 오후 고정 업무");
+    expect(park?.cells.early.value).toBe("안혜정 오전 순환 업무");
+    expect(park?.cells.early.value).not.toBe("안혜정 오후 고정 업무");
+  });
+
   it("keeps the October snapshot for fixed work and continues its rotation across years", () => {
     const options = {
       allDayFixedNames: ["김옥선"],

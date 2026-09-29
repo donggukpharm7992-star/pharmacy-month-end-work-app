@@ -768,6 +768,15 @@ export default function App() {
     }));
   }
 
+  function resetFinalizedPharmacistAssignment() {
+    const monthKey = pharmacistAssignmentMonthKey(year, month);
+    setFinalizedPharmacistAssignments((current) => {
+      const next = { ...current };
+      delete next[monthKey];
+      return next;
+    });
+  }
+
   function finalizeStaffAssignment() {
     setFinalizedStaffAssignments((current) => ({
       ...current,
@@ -900,6 +909,8 @@ export default function App() {
             pharmacistCellEdits={pharmacistCellEdits}
             onPharmacistCellChange={updatePharmacistCell}
             onPharmacistExport={finalizePharmacistAssignment}
+            hasFinalizedPharmacistAssignment={Boolean(finalizedPharmacistAssignments[pharmacistAssignmentMonthKey(year, month)])}
+            onPharmacistFinalReset={resetFinalizedPharmacistAssignment}
             assignmentNameLists={assignmentNameLists}
             setAssignmentNameLists={setAssignmentNameLists}
             pharmacistNamesForMonth={effectivePharmacistNames(defaultPharmacistNameList, pharmacistNameChanges, year, month)}
@@ -1239,6 +1250,8 @@ function AssignmentTab({
   pharmacistCellEdits,
   onPharmacistCellChange,
   onPharmacistExport,
+  hasFinalizedPharmacistAssignment,
+  onPharmacistFinalReset,
   assignmentNameLists,
   setAssignmentNameLists,
   pharmacistNamesForMonth,
@@ -1258,6 +1271,8 @@ function AssignmentTab({
   pharmacistCellEdits: Record<string, string>;
   onPharmacistCellChange: (rowId: string, columnKey: PharmacistAssignmentColumnKey, value: string) => void;
   onPharmacistExport: () => void;
+  hasFinalizedPharmacistAssignment: boolean;
+  onPharmacistFinalReset: () => void;
   assignmentNameLists: AssignmentNameLists;
   setAssignmentNameLists: (value: AssignmentNameLists) => void;
   pharmacistNamesForMonth: string[];
@@ -1557,16 +1572,31 @@ function AssignmentTab({
         <div className="assignment-single-panel pharmacist-assignment-panel">
           <div className="section-title row-title pharmacist-title-row">
             <h3>{pharmacistAssignment.title}</h3>
-            <button
-              type="button"
-              className="quiet no-print"
-              onClick={() => setMergeBlankPharmacistCells(!mergeBlankPharmacistCells)}
-            >
-              {mergeBlankPharmacistCells ? "공란 칸 나누기" : "공란 칸 통합"}
-            </button>
+            <div className="row-actions no-print">
+              {hasFinalizedPharmacistAssignment && (
+                <button
+                  type="button"
+                  className="quiet"
+                  onClick={() => {
+                    if (window.confirm("이달 약사 업무 분장의 최종본을 해제하고 현재 그룹 규칙으로 다시 계산하시겠습니까? 수기 수정값은 유지됩니다.")) {
+                      onPharmacistFinalReset();
+                    }
+                  }}
+                >
+                  이달 최종본 해제 후 자동 재계산
+                </button>
+              )}
+              <button
+                type="button"
+                className="quiet"
+                onClick={() => setMergeBlankPharmacistCells(!mergeBlankPharmacistCells)}
+              >
+                {mergeBlankPharmacistCells ? "공란 칸 나누기" : "공란 칸 통합"}
+              </button>
+            </div>
           </div>
           <p className="assignment-source-note">
-            약제팀 업무분장_2026.xlsx 틀을 기준으로 구성했습니다. 수기 수정은 해당 월에만 저장되며, 약사 업무 분장 엑셀 출력 시 그달 최종본을 기준으로 다음 달 오전·오후 순환 업무가 자동 배정됩니다.
+            약제팀 업무분장_2026.xlsx 틀을 기준으로 구성했습니다. 오전·오후 고정 그룹은 해당 시간대 업무를 유지하고 반대 시간대만 순환합니다. 안혜정·박현영의 점심시간은 항상 11:30-12:30입니다. 수기 수정은 해당 월에만 저장되며, 엑셀 출력 시 그달 최종본을 기준으로 다음 달 업무가 자동 배정됩니다.
           </p>
           <table className="assignment-table pharmacist-assignment-table">
             <thead>

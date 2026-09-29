@@ -454,6 +454,27 @@ export const defaultAllDayRotatingPharmacistNames = defaultRotatingPharmacistNam
 export const defaultMorningRotatingGroupNames: string[] = [];
 export const defaultAfternoonRotatingGroupNames: string[] = [];
 
+const fixedLunchPharmacistRowIds = new Set(["ahn-hyejung", "park-hyunyoung"]);
+
+export function hasFixedPharmacistLunch(rowId: string) {
+  return fixedLunchPharmacistRowIds.has(rowId);
+}
+
+function applyFixedPharmacistLunch(rows: ReturnType<typeof rotatePharmacistTaskValues>) {
+  return rows.map((row) =>
+    hasFixedPharmacistLunch(row.id)
+      ? {
+          ...row,
+          values: {
+            ...row.values,
+            lunchEarly: "식사",
+            lunchLate: ""
+          }
+        }
+      : row
+  );
+}
+
 function rotateRight<T>(items: T[], steps: number): T[] {
   if (items.length === 0) return [];
   const normalized = ((steps % items.length) + items.length) % items.length;
@@ -897,6 +918,23 @@ function applyAnchoredTaskRotation(
 
   rotatePeriod(groups.morningRotatingNames, morningRotationKeys, morningFixedNames);
   rotatePeriod(groups.afternoonRotatingNames, afternoonRotationKeys, afternoonFixedNames);
+
+  rows.forEach((row) => {
+    const anchorRow = anchorRows.find((candidate) => candidate.id === row.id);
+    if (!anchorRow) return;
+    const baseName = pharmacistBaseName(row.values.name);
+    if (allDayFixedNames.has(baseName) || morningFixedNames.has(baseName)) {
+      morningRotationKeys.forEach((key) => {
+        row.values[key] = anchorRow.values[key];
+      });
+    }
+    if (allDayFixedNames.has(baseName) || afternoonFixedNames.has(baseName)) {
+      afternoonRotationKeys.forEach((key) => {
+        row.values[key] = anchorRow.values[key];
+      });
+    }
+  });
+
   return rows;
 }
 
@@ -965,11 +1003,13 @@ export function buildPharmacistAssignment(
   const lastDay = new Date(year, month, 0).getDate();
   const title = `** ${String(month).padStart(2, "0")}월 01일 ~ ${String(month).padStart(2, "0")}월 ${String(lastDay).padStart(2, "0")}일 약제팀 업무분장 **`;
   const rows = applyPharmacistNameList(
-    applyAnchoredTaskRotation(
-      rotatePharmacistTaskValues(sourceRows, year, month, options),
-      year,
-      month,
-      options
+    applyFixedPharmacistLunch(
+      applyAnchoredTaskRotation(
+        rotatePharmacistTaskValues(sourceRows, year, month, options),
+        year,
+        month,
+        options
+      )
     ),
     options.pharmacistNames
   );

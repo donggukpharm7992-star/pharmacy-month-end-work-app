@@ -28,6 +28,18 @@ describe("pharmacist assignment monthly edits", () => {
     expect(pharmacistCellValue(2026, 12, edits, "lee-jieun", "afternoonA", "12월 자동 업무")).toBe("12월 자동 업무");
   });
 
+  it("keeps Ahn Hyejung and Park Hyunyoung at the early lunch slot despite saved edits", () => {
+    const edits = {
+      [pharmacistMonthlyEditKey(2026, 11, "ahn-hyejung", "lunchLate")]: "식사",
+      [pharmacistMonthlyEditKey(2026, 11, "park-hyunyoung", "lunchEarly")]: "다른 내용"
+    };
+
+    expect(pharmacistCellValue(2026, 11, edits, "ahn-hyejung", "lunchEarly", "")).toBe("식사");
+    expect(pharmacistCellValue(2026, 11, edits, "ahn-hyejung", "lunchLate", "식사")).toBe("");
+    expect(pharmacistCellValue(2026, 11, edits, "park-hyunyoung", "lunchEarly", "")).toBe("식사");
+    expect(pharmacistCellValue(2026, 11, edits, "park-hyunyoung", "lunchLate", "식사")).toBe("");
+  });
+
   it("uses a reloaded October edit as November's exact rotating donor and refreshes after an October correction", () => {
     const october = buildPharmacistAssignment(2026, 10);
     const edits = { "park-juyoung:early": "10월 박주영 오전 업무" };
