@@ -42,6 +42,10 @@ import {
 } from "./domain/documents";
 import {
   defaultStaffEarlyNames,
+  FinalizedStaffAssignments,
+  latestStaffAssignmentAnchor,
+  resolveStaffAssignmentEdits,
+  rotateFinalizedStaffAssignments,
   defaultStaffTimeNames,
   rotateStaffAssignments,
   staffAssignmentMonthOffset,
@@ -64,8 +68,15 @@ import {
   defaultMorningRotatingGroupNames,
   defaultPharmacistNameList,
   PharmacistAssignment,
+  PharmacistAssignmentBaseline,
   PharmacistAssignmentColumnKey
 } from "./domain/pharmacistAssignment";
+import {
+  capturePharmacistAssignmentSnapshot,
+  latestPharmacistRotationAnchor,
+  pharmacistCellValue,
+  pharmacistMonthlyEditKey
+} from "./domain/pharmacistAssignmentEdits";
 import { useLocalStorageState } from "./storage";
 
 type MainTab = "schedule" | "assignment" | "documents" | "checklists";
@@ -125,6 +136,7 @@ const legacyPharmacistFixedWorkGroup = ["김옥선", "송은호", "최윤영", "
 const legacyPharmacistRotatingGroup = ["이지은", "송예리", "박혜정", "김경원", "김수빈", "박주영 / (~5시 30분)"];
 const pharmacistParkHyunyoungRuleMigrationKey = "pharmacy-app-pharmacist-park-hyunyoung-rules-v1";
 const pharmacistFixedLunchPairMigrationKey = "pharmacy-app-pharmacist-fixed-lunch-pair-v1";
+const pharmacistOctoberRotationBaselineMigrationKey = "pharmacy-app-pharmacist-october-2026-rotation-baseline-v1";
 const staffTaskDetailMigrationKey = "pharmacy-app-staff-task-detail-swap";
 const documentColumnEditsStorageKey = "pharmacy-app-document-column-edits";
 const legacyStaffTaskCellValues: Record<string, string> = {
@@ -159,6 +171,14 @@ function textToList(text: string) {
 
 function monthSerial(year: number, month: number) {
   return year * 12 + month;
+}
+
+function pharmacistAssignmentMonthKey(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function assignmentMonthKey(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
 function effectivePharmacistNames(
@@ -224,10 +244,6 @@ function readLegacyEventDatesByMonth(): ScheduleEventDatesByMonth {
   } catch {
     return {};
   }
-}
-
-function pharmacistEditKey(rowId: string, columnKey: PharmacistAssignmentColumnKey) {
-  return `${rowId}:${columnKey}`;
 }
 
 function pharmacistCellDisplayValue(_columnKey: PharmacistAssignmentColumnKey, value: string) {
@@ -447,6 +463,10 @@ export default function App() {
     "pharmacy-app-staff-assignment-edits",
     {}
   );
+  const [finalizedStaffAssignments, setFinalizedStaffAssignments] = useLocalStorageState<FinalizedStaffAssignments>(
+    "pharmacy-app-staff-assignment-finalized",
+    {}
+  );
 
   useEffect(() => {
     if (window.localStorage.getItem(pharmacistParkHyunyoungRuleMigrationKey) === "applied") return;
@@ -513,6 +533,13 @@ export default function App() {
     "pharmacy-app-pharmacist-name-changes",
     {}
   );
+  const [pharmacistOctoberRotationBaseline, setPharmacistOctoberRotationBaseline] = useLocalStorageState<PharmacistAssignmentBaseline>(
+    "pharmacy-app-pharmacist-october-2026-rotation-baseline",
+    {}
+  );
+  const [finalizedPharmacistAssignments, setFinalizedPharmacistAssignments] = useLocalStorageState<
+    Record<string, PharmacistAssignmentBaseline>
+  >("pharmacy-app-pharmacist-assignment-finalized", {});
   const [anticancerSubPeriods, setAnticancerSubPeriods] = useLocalStorageState<AnticancerSubPeriod[]>(
     "pharmacy-app-anticancer-sub-periods",
     [
@@ -611,6 +638,45 @@ export default function App() {
     window.localStorage.setItem(staffTimeAssignmentOrderMigrationKey, "applied");
   }, [assignmentNameLists.staffTimeNames, setAssignmentNameLists]);
 
+  const octoberPharmacistAssignmentOptions = {
+    pharmacistNames: effectivePharmacistNames(defaultPharmacistNameList, pharmacistNameChanges, 2026, 10),
+    allDayFixedNames: assignmentNameLists.allDayFixedPharmacistNames,
+    morningFixedNames: assignmentNameLists.morningFixedPharmacistNames,
+    afternoonFixedNames: assignmentNameLists.afternoonFixedPharmacistNames,
+    allDayRotatingNames: assignmentNameLists.allDayRotatingPharmacistNames,
+    morningRotatingNames: assignmentNameLists.morningRotatingPharmacistNames,
+    afternoonRotatingNames: assignmentNameLists.afternoonRotatingPharmacistNames,
+    anticancerSubNames: activeAnticancerSubNames(anticancerSubPeriods, 2026, 10)
+  };
+
+  useEffect(() => {
+    const groupsReady =
+      Array.isArray(assignmentNameLists.allDayFixedPharmacistNames) &&
+      Array.isArray(assignmentNameLists.allDayRotatingPharmacistNames);
+    if (!groupsReady) return;
+    if (
+      window.localStorage.getItem(pharmacistOctoberRotationBaselineMigrationKey) === "applied" &&
+      Object.keys(pharmacistOctoberRotationBaseline).length > 0
+    ) return;
+
+    const octoberAssignment = buildPharmacistAssignment(2026, 10, octoberPharmacistAssignmentOptions);
+    const baseline = capturePharmacistAssignmentSnapshot(2026, 10, octoberAssignment, pharmacistCellEdits);
+    setPharmacistOctoberRotationBaseline(baseline);
+    window.localStorage.setItem(pharmacistOctoberRotationBaselineMigrationKey, "applied");
+  }, [
+    anticancerSubPeriods,
+    assignmentNameLists.allDayFixedPharmacistNames,
+    assignmentNameLists.afternoonFixedPharmacistNames,
+    assignmentNameLists.afternoonRotatingPharmacistNames,
+    assignmentNameLists.morningFixedPharmacistNames,
+    assignmentNameLists.morningRotatingPharmacistNames,
+    assignmentNameLists.allDayRotatingPharmacistNames,
+    pharmacistCellEdits,
+    pharmacistNameChanges,
+    pharmacistOctoberRotationBaseline,
+    setPharmacistOctoberRotationBaseline
+  ]);
+
   const schedule = useMemo(
     () => {
       const generatedSchedule = buildMonthSchedule(year, month, {
@@ -631,13 +697,20 @@ export default function App() {
 
   const calendarEvents: CalendarEvent[] = schedule.events;
   const calendarCells = buildMonthDays(year, month, calendarEvents);
-  const staffAssignments = rotateStaffAssignments(
-    staffAssignmentTemplate,
-    staffAssignmentMonthOffset(year, month),
-    {
-      timeNames: assignmentNameLists.staffTimeNames,
-      earlyNames: assignmentNameLists.staffEarlyNames
-    }
+  const staffRotationOptions = {
+    timeNames: assignmentNameLists.staffTimeNames,
+    earlyNames: assignmentNameLists.staffEarlyNames
+  };
+  const staffAnchor = latestStaffAssignmentAnchor(finalizedStaffAssignments, year, month);
+  const generatedStaffAssignments = staffAnchor
+    ? rotateFinalizedStaffAssignments(staffAnchor, year, month)
+    : rotateStaffAssignments(staffAssignmentTemplate, staffAssignmentMonthOffset(year, month), staffRotationOptions);
+  const staffAssignments = resolveStaffAssignmentEdits(
+    generatedStaffAssignments,
+    staffCellEdits,
+    year,
+    month,
+    assignmentNameLists.staffEarlyNames
   );
   const pharmacistAssignment = useMemo(
     () => buildPharmacistAssignment(year, month, {
@@ -648,7 +721,13 @@ export default function App() {
       allDayRotatingNames: assignmentNameLists.allDayRotatingPharmacistNames,
       morningRotatingNames: assignmentNameLists.morningRotatingPharmacistNames,
       afternoonRotatingNames: assignmentNameLists.afternoonRotatingPharmacistNames,
-      anticancerSubNames: activeAnticancerSubNames(anticancerSubPeriods, year, month)
+      anticancerSubNames: activeAnticancerSubNames(anticancerSubPeriods, year, month),
+      rotationAnchor: latestPharmacistRotationAnchor(
+        finalizedPharmacistAssignments,
+        pharmacistOctoberRotationBaseline,
+        year,
+        month
+      )
     }),
     [
       assignmentNameLists.allDayFixedPharmacistNames,
@@ -658,11 +737,43 @@ export default function App() {
       assignmentNameLists.morningRotatingPharmacistNames,
       assignmentNameLists.afternoonRotatingPharmacistNames,
       anticancerSubPeriods,
+      finalizedPharmacistAssignments,
+      pharmacistOctoberRotationBaseline,
       pharmacistNameChanges,
       month,
       year
     ]
   );
+
+  function updatePharmacistCell(
+    rowId: string,
+    columnKey: PharmacistAssignmentColumnKey,
+    value: string
+  ) {
+    setPharmacistCellEdits((current) => ({
+      ...current,
+      [pharmacistMonthlyEditKey(year, month, rowId, columnKey)]: value
+    }));
+  }
+
+  function finalizePharmacistAssignment() {
+    setFinalizedPharmacistAssignments((current) => ({
+      ...current,
+      [pharmacistAssignmentMonthKey(year, month)]: capturePharmacistAssignmentSnapshot(
+        year,
+        month,
+        pharmacistAssignment,
+        pharmacistCellEdits
+      )
+    }));
+  }
+
+  function finalizeStaffAssignment() {
+    setFinalizedStaffAssignments((current) => ({
+      ...current,
+      [assignmentMonthKey(year, month)]: staffAssignments.map((row) => ({ ...row }))
+    }));
+  }
 
   function moveMonth(direction: -1 | 1) {
     setSelectedDate(new Date(year, month - 1 + direction, 1));
@@ -784,9 +895,11 @@ export default function App() {
             staffAssignments={staffAssignments}
             staffCellEdits={staffCellEdits}
             setStaffCellEdits={setStaffCellEdits}
+            onStaffExport={finalizeStaffAssignment}
             pharmacistAssignment={pharmacistAssignment}
             pharmacistCellEdits={pharmacistCellEdits}
-            setPharmacistCellEdits={setPharmacistCellEdits}
+            onPharmacistCellChange={updatePharmacistCell}
+            onPharmacistExport={finalizePharmacistAssignment}
             assignmentNameLists={assignmentNameLists}
             setAssignmentNameLists={setAssignmentNameLists}
             pharmacistNamesForMonth={effectivePharmacistNames(defaultPharmacistNameList, pharmacistNameChanges, year, month)}
@@ -1121,9 +1234,11 @@ function AssignmentTab({
   staffAssignments,
   staffCellEdits,
   setStaffCellEdits,
+  onStaffExport,
   pharmacistAssignment,
   pharmacistCellEdits,
-  setPharmacistCellEdits,
+  onPharmacistCellChange,
+  onPharmacistExport,
   assignmentNameLists,
   setAssignmentNameLists,
   pharmacistNamesForMonth,
@@ -1138,9 +1253,11 @@ function AssignmentTab({
   staffAssignments: ReturnType<typeof rotateStaffAssignments>;
   staffCellEdits: Record<string, string>;
   setStaffCellEdits: (value: Record<string, string>) => void;
+  onStaffExport: () => void;
   pharmacistAssignment: PharmacistAssignment;
   pharmacistCellEdits: Record<string, string>;
-  setPharmacistCellEdits: (value: Record<string, string>) => void;
+  onPharmacistCellChange: (rowId: string, columnKey: PharmacistAssignmentColumnKey, value: string) => void;
+  onPharmacistExport: () => void;
   assignmentNameLists: AssignmentNameLists;
   setAssignmentNameLists: (value: AssignmentNameLists) => void;
   pharmacistNamesForMonth: string[];
@@ -1195,11 +1312,17 @@ function AssignmentTab({
 
   function getStaffEditValue(
     row: ReturnType<typeof rotateStaffAssignments>[number],
-    rowIndex: number,
+    _rowIndex: number,
     columnKey: StaffAssignmentColumnKey
   ) {
-    const editKey = staffAssignmentEditKey(year, month, rowIndex, columnKey);
-    return staffCellEdits[editKey] ?? staffCellValue(row, columnKey);
+    return staffCellValue(row, columnKey);
+  }
+
+  function getPharmacistCellValue(
+    row: PharmacistAssignment["rows"][number],
+    columnKey: PharmacistAssignmentColumnKey
+  ) {
+    return pharmacistCellValue(year, month, pharmacistCellEdits, row.id, columnKey, row.cells[columnKey].value);
   }
 
   function renderPharmacistCells(row: PharmacistAssignment["rows"][number]) {
@@ -1207,8 +1330,7 @@ function AssignmentTab({
     for (let index = 0; index < pharmacistAssignment.columns.length; index += 1) {
       const column = pharmacistAssignment.columns[index];
       const cell = row.cells[column.key];
-      const editKey = pharmacistEditKey(row.id, column.key);
-      const value = pharmacistCellEdits[editKey] ?? cell.value;
+      const value = getPharmacistCellValue(row, column.key);
       const displayValue = pharmacistCellDisplayValue(column.key, value);
       let colSpan = 1;
 
@@ -1221,7 +1343,7 @@ function AssignmentTab({
         while (index + colSpan < pharmacistAssignment.columns.length) {
           const nextColumn = pharmacistAssignment.columns[index + colSpan];
           if (nextColumn.key === "duty") break;
-          const nextValue = pharmacistCellEdits[pharmacistEditKey(row.id, nextColumn.key)] ?? row.cells[nextColumn.key].value;
+          const nextValue = getPharmacistCellValue(row, nextColumn.key);
           if (!isBlankPharmacistCell(nextValue)) break;
           colSpan += 1;
         }
@@ -1244,10 +1366,7 @@ function AssignmentTab({
                 className="cell-input"
                 value={value}
                 onChange={(event) =>
-                  setPharmacistCellEdits({
-                    ...pharmacistCellEdits,
-                    [editKey]: event.currentTarget.value
-                  })
+                  onPharmacistCellChange(row.id, column.key, event.currentTarget.value)
                 }
               />
             ) : (
@@ -1255,10 +1374,7 @@ function AssignmentTab({
                 className="cell-textarea"
                 value={displayValue}
                 onChange={(event) =>
-                  setPharmacistCellEdits({
-                    ...pharmacistCellEdits,
-                    [editKey]: event.currentTarget.value
-                  })
+                  onPharmacistCellChange(row.id, column.key, event.currentTarget.value)
                 }
               />
             )
@@ -1282,21 +1398,20 @@ function AssignmentTab({
           staffAssignmentColumns.map((column) => getStaffEditValue(row, rowIndex, column.key))
         )
       );
+      onStaffExport();
       return;
     }
 
     const excelRows = pharmacistAssignment.rows.map((row) => {
       if (row.merged) {
-        const value =
-          pharmacistCellEdits[pharmacistEditKey(row.id, "name")] ?? row.cells.name.value;
+        const value = getPharmacistCellValue(row, "name");
         return [{ value, colSpan: pharmacistAssignment.columns.length }];
       }
 
       const cells: ExcelExportCell[] = [];
       for (let index = 0; index < pharmacistAssignment.columns.length; index += 1) {
         const column = pharmacistAssignment.columns[index];
-        const value =
-          pharmacistCellEdits[pharmacistEditKey(row.id, column.key)] ?? row.cells[column.key].value;
+        const value = getPharmacistCellValue(row, column.key);
         let colSpan = 1;
         if (
           mergeBlankPharmacistCells &&
@@ -1307,9 +1422,7 @@ function AssignmentTab({
           while (index + colSpan < pharmacistAssignment.columns.length) {
             const nextColumn = pharmacistAssignment.columns[index + colSpan];
             if (nextColumn.key === "duty") break;
-            const nextValue =
-              pharmacistCellEdits[pharmacistEditKey(row.id, nextColumn.key)] ??
-              row.cells[nextColumn.key].value;
+            const nextValue = getPharmacistCellValue(row, nextColumn.key);
             if (!isBlankPharmacistCell(nextValue)) break;
             colSpan += 1;
           }
@@ -1331,6 +1444,7 @@ function AssignmentTab({
       excelRows,
       true
     );
+    onPharmacistExport();
   }
 
   return (
@@ -1365,6 +1479,7 @@ function AssignmentTab({
       {selectedView === "staff" && (
         <div className="assignment-single-panel">
           <h3>직원 업무 분장</h3>
+          <p className="assignment-source-note">식사시간은 시 간 이름과 7:15~8:00 이름 목록에 따라 자동 배정됩니다.</p>
           <table className="assignment-table staff-assignment-table">
             <thead>
               <tr>
@@ -1380,9 +1495,10 @@ function AssignmentTab({
                     const editKey = staffAssignmentEditKey(year, month, rowIndex, column.key);
                     const value = getStaffEditValue(row, rowIndex, column.key);
                     const compact = column.key === "task" || column.key.includes("Name") || column.key.includes("lunch");
+                    const lunchColumn = column.key === "lunchEarly" || column.key === "lunchLate";
                     return (
                       <td key={`${rowIndex}-${column.key}`} className="editable-cell staff-task-text">
-                        {compact ? (
+                        {lunchColumn ? value : compact ? (
                           <input
                             className="cell-input"
                             value={value}
@@ -1450,7 +1566,7 @@ function AssignmentTab({
             </button>
           </div>
           <p className="assignment-source-note">
-            약제팀 업무분장_2026.xlsx 틀을 기준으로 구성했습니다. 모든 표시 칸은 수기 편집 후 저장됩니다.
+            약제팀 업무분장_2026.xlsx 틀을 기준으로 구성했습니다. 수기 수정은 해당 월에만 저장되며, 약사 업무 분장 엑셀 출력 시 그달 최종본을 기준으로 다음 달 오전·오후 순환 업무가 자동 배정됩니다.
           </p>
           <table className="assignment-table pharmacist-assignment-table">
             <thead>
@@ -1467,12 +1583,9 @@ function AssignmentTab({
                     <td colSpan={pharmacistAssignment.columns.length} className="editable-cell merged-note-cell">
                       <input
                         className="cell-input"
-                        value={pharmacistCellEdits[pharmacistEditKey(row.id, "name")] ?? row.cells.name.value}
+                        value={getPharmacistCellValue(row, "name")}
                         onChange={(event) =>
-                          setPharmacistCellEdits({
-                            ...pharmacistCellEdits,
-                            [pharmacistEditKey(row.id, "name")]: event.currentTarget.value
-                          })
+                          onPharmacistCellChange(row.id, "name", event.currentTarget.value)
                         }
                       />
                     </td>

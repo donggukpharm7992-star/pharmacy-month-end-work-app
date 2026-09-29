@@ -39,6 +39,14 @@ export type StaffAssignmentRotationOptions = {
   earlyNames?: string[];
 };
 
+export type FinalizedStaffAssignments = Record<string, StaffAssignmentRow[]>;
+
+export type StaffAssignmentAnchor = {
+  year: number;
+  month: number;
+  rows: StaffAssignmentRow[];
+};
+
 export const staffAssignmentColumns: StaffAssignmentColumn[] = [
   { key: "task", label: "업무", editable: true },
   { key: "primaryName", label: "시 간", editable: true },
@@ -200,6 +208,69 @@ export function rotateStaffAssignments(
       ...row,
       primaryName,
       helperName,
+      lunchEarly: earlyLunch ? "식사" : "",
+      lunchLate: earlyLunch ? "" : "식사",
+      lunchSlot: earlyLunch ? "11:45-12:30" : "12:30-13:30"
+    };
+  });
+}
+
+export function latestStaffAssignmentAnchor(
+  finalizedAssignments: FinalizedStaffAssignments,
+  year: number,
+  month: number
+): StaffAssignmentAnchor | undefined {
+  const serial = (anchorYear: number, anchorMonth: number) => anchorYear * 12 + anchorMonth;
+  const target = serial(year, month);
+  return Object.entries(finalizedAssignments)
+    .map(([key, rows]) => {
+      const [anchorYear, anchorMonth] = key.split("-").map(Number);
+      return { year: anchorYear, month: anchorMonth, rows };
+    })
+    .filter((anchor) => serial(anchor.year, anchor.month) <= target)
+    .sort((left, right) => serial(right.year, right.month) - serial(left.year, left.month))[0];
+}
+
+export function rotateFinalizedStaffAssignments(
+  anchor: StaffAssignmentAnchor,
+  year: number,
+  month: number
+): StaffAssignmentRow[] {
+  const offset = (year - anchor.year) * 12 + (month - anchor.month);
+  if (offset <= 0) return anchor.rows.map((row) => ({ ...row }));
+
+  const primaryNames = rotateRight(anchor.rows.map((row) => row.primaryName), offset);
+  const helperSlots = anchor.rows
+    .map((row, index) => ({ index, helperName: row.helperName }))
+    .filter((slot): slot is { index: number; helperName: string } => Boolean(slot.helperName));
+  const helperNames = rotateRight(helperSlots.map((slot) => slot.helperName), offset);
+  return anchor.rows.map((row, index) => ({
+    ...row,
+    primaryName: primaryNames[index] ?? "",
+    helperName: helperSlots.some((slot) => slot.index === index)
+      ? helperNames[helperSlots.findIndex((slot) => slot.index === index)]
+      : ""
+  }));
+}
+
+export function resolveStaffAssignmentEdits(
+  rows: StaffAssignmentRow[],
+  edits: Record<string, string>,
+  year: number,
+  month: number,
+  earlyNames: string[]
+): StaffAssignmentRow[] {
+  return rows.map((row, index) => {
+    const resolved = { ...row } as StaffAssignmentRow;
+    staffAssignmentColumns.forEach((column) => {
+      const key = `${year}-${String(month).padStart(2, "0")}:${index}:${column.key}`;
+      if (edits[key] !== undefined) {
+        resolved[column.key] = edits[key] as never;
+      }
+    });
+    const earlyLunch = earlyNames.includes(resolved.primaryName);
+    return {
+      ...resolved,
       lunchEarly: earlyLunch ? "식사" : "",
       lunchLate: earlyLunch ? "" : "식사",
       lunchSlot: earlyLunch ? "11:45-12:30" : "12:30-13:30"

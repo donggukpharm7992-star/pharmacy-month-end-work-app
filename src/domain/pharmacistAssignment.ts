@@ -46,6 +46,19 @@ export type PharmacistAssignmentOptions = {
   morningRotatingNames?: string[];
   afternoonRotatingNames?: string[];
   anticancerSubNames?: string[];
+  /** Final values displayed in the most recently exported assignment month. */
+  rotationAnchor?: PharmacistRotationAnchor;
+};
+
+export type PharmacistAssignmentBaseline = Record<
+  string,
+  Partial<Record<PharmacistAssignmentColumnKey, string>>
+>;
+
+export type PharmacistRotationAnchor = {
+  year: number;
+  month: number;
+  baseline: PharmacistAssignmentBaseline;
 };
 
 export const pharmacistAssignmentColumns: PharmacistAssignmentColumn[] = [
@@ -788,6 +801,105 @@ function rotatePharmacistTaskValues(
   });
 }
 
+const morningRotationKeys: PharmacistAssignmentColumnKey[] = ["early", "morningSupport", "morningMain"];
+const afternoonRotationKeys: PharmacistAssignmentColumnKey[] = ["afternoonA", "afternoonB"];
+
+function applyOctoberBaseline(
+  rows: ReturnType<typeof rotatePharmacistTaskValues>,
+  baseline: PharmacistAssignmentBaseline
+) {
+  return rows.map((row) => ({
+    ...row,
+    values: {
+      ...row.values,
+      ...Object.fromEntries(
+        Object.entries(baseline[row.id] ?? {}).filter(([key]) => key !== "name")
+      )
+    }
+  }));
+}
+
+/**
+ * The latest exported assignment is the rotation anchor. Later months begin
+ * with their existing non-rotation rules, then receive the anchor's morning
+ * and afternoon payload from each effective rotation pool.
+ */
+function applyAnchoredTaskRotation(
+  rows: ReturnType<typeof rotatePharmacistTaskValues>,
+  year: number,
+  month: number,
+  options: PharmacistAssignmentOptions
+) {
+  const anchor = options.rotationAnchor;
+  if (!anchor) return rows;
+  const offset = (year - anchor.year) * 12 + (month - anchor.month);
+  if (offset < 0) return rows;
+
+  if (offset === 0) {
+    return rows.map((row) => {
+      const baseline = anchor.baseline[row.id];
+      if (!baseline) return row;
+      const values = { ...row.values };
+      taskRotationKeys.forEach((key) => {
+        if (baseline[key] !== undefined) values[key] = baseline[key];
+      });
+      return { ...row, values };
+    });
+  }
+
+  const anchorRows = applyOctoberBaseline(
+    rotatePharmacistTaskValues(sourceRows, anchor.year, anchor.month, { ...options, rotationAnchor: undefined }),
+    anchor.baseline
+  );
+  const groups = effectivePharmacistRotationGroups(options);
+  const allDayFixedNames = new Set(groups.allDayFixedNames.map(pharmacistBaseName));
+  const morningFixedNames = new Set(groups.morningFixedNames.map(pharmacistBaseName));
+  const afternoonFixedNames = new Set(groups.afternoonFixedNames.map(pharmacistBaseName));
+  const temporaryFixedNames = new Set(options.anticancerSubNames ?? []);
+
+  rows.forEach((row) => {
+    const anchorRow = anchorRows.find((candidate) => candidate.id === row.id);
+    if (!anchorRow || temporaryFixedNames.has(pharmacistBaseName(row.values.name))) return;
+    [...morningRotationKeys, ...afternoonRotationKeys].forEach((key) => {
+      row.values[key] = anchorRow.values[key];
+    });
+  });
+
+  function rotatePeriod(
+    names: string[],
+    keys: PharmacistAssignmentColumnKey[],
+    fixedForPeriod: Set<string>
+  ) {
+    const targets = rows.filter((row) => {
+      const baseName = pharmacistBaseName(row.values.name);
+      return (
+        (row.kind ?? "person") === "person" &&
+        names.includes(row.values.name) &&
+        !allDayFixedNames.has(baseName) &&
+        !fixedForPeriod.has(baseName) &&
+        !temporaryFixedNames.has(baseName)
+      );
+    });
+    const payloads = rotateRight(
+      targets.map((target) => {
+        const anchorRow = anchorRows.find((row) => row.id === target.id);
+        return Object.fromEntries(keys.map((key) => [key, anchorRow?.values[key] ?? target.values[key]]));
+      }),
+      offset
+    );
+
+    targets.forEach((target, index) => {
+      keys.forEach((key) => {
+        target.values[key] = String(payloads[index]?.[key] ?? "");
+      });
+    });
+  }
+
+  rotatePeriod(groups.morningRotatingNames, morningRotationKeys, morningFixedNames);
+  rotatePeriod(groups.afternoonRotatingNames, afternoonRotationKeys, afternoonFixedNames);
+  return rows;
+}
+
 function isEditableCell(
   _rowKind: "person" | "note",
   _name: string,
@@ -853,9 +965,20 @@ export function buildPharmacistAssignment(
   const lastDay = new Date(year, month, 0).getDate();
   const title = `** ${String(month).padStart(2, "0")}월 01일 ~ ${String(month).padStart(2, "0")}월 ${String(lastDay).padStart(2, "0")}일 약제팀 업무분장 **`;
   const rows = applyPharmacistNameList(
-    rotatePharmacistTaskValues(sourceRows, year, month, options),
+    applyAnchoredTaskRotation(
+      rotatePharmacistTaskValues(sourceRows, year, month, options),
+      year,
+      month,
+      options
+    ),
     options.pharmacistNames
   );
+  const anchor = options.rotationAnchor;
+  if (anchor && anchor.year === year && anchor.month === month) {
+    rows.forEach((row) => {
+      Object.assign(row.values, anchor.baseline[row.id] ?? {});
+    });
+  }
   const personRows = rows.filter((row) => (row.kind ?? "person") === "person");
   personRows.forEach((row) => {
     row.values.name = row.values.name.replace(/\s*\/\s*\(~5시\s*30분\)\s*$/, "").trim();

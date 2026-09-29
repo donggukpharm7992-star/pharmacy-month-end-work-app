@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   defaultStaffEarlyNames,
   defaultStaffTimeNames,
+  latestStaffAssignmentAnchor,
+  resolveStaffAssignmentEdits,
+  rotateFinalizedStaffAssignments,
   rotateStaffAssignments,
   staffAssignmentMonthOffset,
   staffAssignmentColumns,
@@ -132,5 +135,43 @@ describe("staff task assignment rotation", () => {
     expect(staffAssignmentMonthOffset(2026, 8)).toBe(0);
     expect(staffAssignmentMonthOffset(2026, 9)).toBe(1);
     expect(staffAssignmentMonthOffset(2027, 8)).toBe(12);
+  });
+
+  it("uses an exported staff final as the next month's name rotation while keeping edited task text fixed", () => {
+    const novemberFinal = rotateStaffAssignments(staffAssignmentTemplate, 3).map((row) => ({ ...row }));
+    novemberFinal[0].primaryName = "수기 직원A";
+    novemberFinal[0].helperName = "수기 조기A";
+    novemberFinal[0].morningTask = "수기 오전 업무";
+    const anchor = latestStaffAssignmentAnchor({ "2026-11": JSON.parse(JSON.stringify(novemberFinal)) }, 2026, 12);
+    const december = rotateFinalizedStaffAssignments(anchor!, 2026, 12);
+
+    expect(december[1].primaryName).toBe("수기 직원A");
+    expect(december[0].morningTask).toBe("수기 오전 업무");
+    expect(december[1].helperName).toBe("수기 조기A");
+  });
+
+  it("does not use an unexported staff draft as a future anchor and recomputes lunch after name edits", () => {
+    const november = rotateStaffAssignments(staffAssignmentTemplate, 3);
+    const draft = {
+      "2026-11:0:primaryName": "박지숙",
+      "2026-11:0:lunchLate": "식사"
+    };
+    const resolved = resolveStaffAssignmentEdits(november, draft, 2026, 11, ["박지숙"]);
+    const december = rotateStaffAssignments(staffAssignmentTemplate, 4);
+
+    expect(resolved[0].lunchEarly).toBe("식사");
+    expect(resolved[0].lunchLate).toBe("");
+    expect(december[0].primaryName).not.toBe("박지숙");
+  });
+
+  it("uses the current early-name list for both lunch cells after a finalized anchor", () => {
+    const anchor = latestStaffAssignmentAnchor({ "2026-12": staffAssignmentTemplate }, 2027, 1)!;
+    const january = rotateFinalizedStaffAssignments(anchor, 2027, 1);
+    const resolved = resolveStaffAssignmentEdits(january, {}, 2027, 1, [january[0].primaryName]);
+
+    expect(resolved[0].lunchEarly).toBe("식사");
+    expect(resolved[0].lunchLate).toBe("");
+    expect(resolved[1].lunchEarly).toBe("");
+    expect(resolved[1].lunchLate).toBe("식사");
   });
 });

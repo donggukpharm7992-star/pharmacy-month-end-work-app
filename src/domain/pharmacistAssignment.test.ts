@@ -5,8 +5,18 @@ import {
   defaultPharmacistNameList,
   defaultRotatingPharmacistNames,
   effectivePharmacistRotationGroups,
+  PharmacistAssignmentBaseline,
   pharmacistAssignmentColumns
 } from "./pharmacistAssignment";
+
+function octoberBaseline(assignment: ReturnType<typeof buildPharmacistAssignment>): PharmacistAssignmentBaseline {
+  return Object.fromEntries(
+    assignment.rows.map((row) => [
+      row.id,
+      Object.fromEntries(pharmacistAssignmentColumns.map((column) => [column.key, row.cells[column.key].value]))
+    ])
+  );
+}
 
 describe("pharmacist assignment template", () => {
   it("uses the pharmacy team assignment spreadsheet frame", () => {
@@ -104,6 +114,81 @@ describe("pharmacist assignment template", () => {
     expect(person(october, "최윤영")?.cells.early.value).not.toBe(person(september, "최윤영")?.cells.early.value);
     expect(effectivePharmacistRotationGroups(options).morningRotatingNames).toContain("최윤영");
     expect(effectivePharmacistRotationGroups(options).afternoonRotatingNames).toContain("오아라");
+  });
+
+  it("uses the final October payload as the exact November donor for all-day rotating pharmacists", () => {
+    const options = {
+      allDayFixedNames: ["김옥선"],
+      morningFixedNames: ["오아라"],
+      afternoonFixedNames: ["박혜정"],
+      allDayRotatingNames: ["이지은", "김경원"],
+      morningRotatingNames: ["김수빈"],
+      afternoonRotatingNames: ["박주영 / (~5시 30분)"],
+      anticancerSubNames: []
+    };
+    const october = buildPharmacistAssignment(2026, 10, options);
+    const baseline = octoberBaseline(october);
+    baseline["lee-jieun"].early = "10월 이지은 오전";
+    baseline["lee-jieun"].afternoonA = "10월 이지은 오후";
+    baseline["kim-subin"].early = "10월 김수빈 오전";
+    baseline["kim-subin"].afternoonA = "10월 김수빈 오후";
+    const november = buildPharmacistAssignment(2026, 11, {
+      ...options,
+      rotationAnchor: { year: 2026, month: 10, baseline }
+    });
+    const person = (assignment: ReturnType<typeof buildPharmacistAssignment>, name: string) =>
+      assignment.rows.find((row) => row.cells.name.value.startsWith(name));
+
+    expect(person(november, "이지은")?.cells.early.value).toBe(baseline["kim-subin"].early);
+    expect(person(november, "이지은")?.cells.afternoonA.value).toBe(baseline["park-juyoung"].afternoonA);
+    expect(person(november, "오아라")?.cells.early.value).toBe(baseline["oh-ara"].early);
+    expect(person(november, "박혜정")?.cells.afternoonA.value).toBe(baseline["park-hyejung"].afternoonA);
+  });
+
+  it("keeps the October snapshot for fixed work and continues its rotation across years", () => {
+    const options = {
+      allDayFixedNames: ["김옥선"],
+      morningFixedNames: ["오아라"],
+      afternoonFixedNames: ["박혜정"],
+      allDayRotatingNames: ["이지은", "김경원"],
+      morningRotatingNames: ["김수빈"],
+      afternoonRotatingNames: ["박주영 / (~5시 30분)"],
+      anticancerSubNames: []
+    };
+    const october = buildPharmacistAssignment(2026, 10, options);
+    const baseline = octoberBaseline(october);
+    baseline["kim-okseon"].early = "10월 종일 고정";
+    baseline["oh-ara"].early = "10월 오전 고정";
+    baseline["park-hyejung"].afternoonA = "10월 오후 고정";
+    baseline["lee-jieun"].early = "10월 이지은 오전";
+    const january = buildPharmacistAssignment(2027, 1, {
+      ...options,
+      rotationAnchor: { year: 2026, month: 10, baseline }
+    });
+    const person = (name: string) => january.rows.find((row) => row.cells.name.value.startsWith(name));
+
+    expect(person("김옥선")?.cells.early.value).toBe("10월 종일 고정");
+    expect(person("오아라")?.cells.early.value).toBe("10월 오전 고정");
+    expect(person("박혜정")?.cells.afternoonA.value).toBe("10월 오후 고정");
+    expect(person("이지은")?.cells.early.value).toBe(baseline["park-hyejung"].early);
+  });
+
+  it("keeps the saved October snapshot visible after rotation groups change", () => {
+    const october = buildPharmacistAssignment(2026, 10, { anticancerSubNames: [] });
+    const baseline = octoberBaseline(october);
+    baseline["lee-jieun"].early = "저장된 10월 업무";
+    const changedGroups = buildPharmacistAssignment(2026, 10, {
+      allDayFixedNames: ["이지은"],
+      morningFixedNames: [],
+      afternoonFixedNames: [],
+      allDayRotatingNames: [],
+      morningRotatingNames: [],
+      afternoonRotatingNames: [],
+      anticancerSubNames: [],
+      rotationAnchor: { year: 2026, month: 10, baseline }
+    });
+
+    expect(changedGroups.rows.find((row) => row.id === "lee-jieun")?.cells.early.value).toBe("저장된 10월 업무");
   });
 
   it("honors empty groups and lets all-day fixed membership take precedence over overlap", () => {
