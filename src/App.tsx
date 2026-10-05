@@ -77,7 +77,7 @@ import {
   pharmacistCellValue,
   pharmacistMonthlyEditKey
 } from "./domain/pharmacistAssignmentEdits";
-import { useLocalStorageState } from "./storage";
+import { appStorage, isViewerMode, useLocalStorageState } from "./storage";
 
 type MainTab = "schedule" | "assignment" | "documents" | "checklists";
 type PrintOrientation = "portrait" | "landscape";
@@ -228,7 +228,7 @@ function positionTextToList(text: string) {
 
 function readLegacyEventDatesByMonth(): ScheduleEventDatesByMonth {
   try {
-    const stored = window.localStorage.getItem("pharmacy-app-event-dates");
+    const stored = appStorage.getItem("pharmacy-app-event-dates");
     if (stored == null) return {};
     const legacyDates = JSON.parse(stored) as ScheduleEventDates;
 
@@ -397,7 +397,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (window.localStorage.getItem(nightPharmacistAugustRuleMigrationKey) === "applied") return;
+    if (appStorage.getItem(nightPharmacistAugustRuleMigrationKey) === "applied") return;
 
     const usesLegacyOrder =
       lists.nightPharmacists.length === legacyNightPharmacistOrder.length &&
@@ -410,11 +410,11 @@ export default function App() {
       setNightPharmacistTurnDate(DEFAULT_NIGHT_PHARMACIST_TURN_DATE);
     }
 
-    window.localStorage.setItem(nightPharmacistAugustRuleMigrationKey, "applied");
+    appStorage.setItem(nightPharmacistAugustRuleMigrationKey, "applied");
   }, [lists.nightPharmacists, nightPharmacistTurnDate, setLists, setNightPharmacistTurnDate]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(weekendStaffSeptemberRuleMigrationKey) === "applied") return;
+    if (appStorage.getItem(weekendStaffSeptemberRuleMigrationKey) === "applied") return;
 
     const usesLegacyOrder =
       lists.weekendStaff.length === legacyWeekendStaffOrder.length &&
@@ -424,11 +424,11 @@ export default function App() {
       setLists((current) => ({ ...current, weekendStaff: defaultWeekendStaff }));
     }
 
-    window.localStorage.setItem(weekendStaffSeptemberRuleMigrationKey, "applied");
+    appStorage.setItem(weekendStaffSeptemberRuleMigrationKey, "applied");
   }, [lists.weekendStaff, setLists]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(weekendPharmacistSeptemberAnchorMigrationKey) === "applied") return;
+    if (appStorage.getItem(weekendPharmacistSeptemberAnchorMigrationKey) === "applied") return;
 
     const usesLegacyOrder =
       lists.weekendPharmacists.length === legacyWeekendPharmacistOrder.length &&
@@ -438,11 +438,11 @@ export default function App() {
       setLists((current) => ({ ...current, weekendPharmacists: defaultWeekendPharmacists }));
     }
 
-    window.localStorage.setItem(weekendPharmacistSeptemberAnchorMigrationKey, "applied");
+    appStorage.setItem(weekendPharmacistSeptemberAnchorMigrationKey, "applied");
   }, [lists.weekendPharmacists, setLists]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(weekendPharmacistKimGyeongwonRemovalMigrationKey) === "applied") return;
+    if (appStorage.getItem(weekendPharmacistKimGyeongwonRemovalMigrationKey) === "applied") return;
 
     const usesPreviousDefaultOrder =
       lists.weekendPharmacists.length === weekendPharmacistOrderWithKimGyeongwon.length &&
@@ -452,7 +452,7 @@ export default function App() {
       setLists((current) => ({ ...current, weekendPharmacists: defaultWeekendPharmacists }));
     }
 
-    window.localStorage.setItem(weekendPharmacistKimGyeongwonRemovalMigrationKey, "applied");
+    appStorage.setItem(weekendPharmacistKimGyeongwonRemovalMigrationKey, "applied");
   }, [lists.weekendPharmacists, setLists]);
 
   const [pharmacistCellEdits, setPharmacistCellEdits] = useLocalStorageState<Record<string, string>>(
@@ -469,7 +469,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (window.localStorage.getItem(pharmacistParkHyunyoungRuleMigrationKey) === "applied") return;
+    if (appStorage.getItem(pharmacistParkHyunyoungRuleMigrationKey) === "applied") return;
 
     const resetKeys = new Set(
       ["early", "morningSupport", "morningMain", "lunchEarly", "lunchLate", "afternoonA", "afternoonB"].map(
@@ -479,21 +479,21 @@ export default function App() {
     setPharmacistCellEdits((current) =>
       Object.fromEntries(Object.entries(current).filter(([key]) => !resetKeys.has(key)))
     );
-    window.localStorage.setItem(pharmacistParkHyunyoungRuleMigrationKey, "applied");
+    appStorage.setItem(pharmacistParkHyunyoungRuleMigrationKey, "applied");
   }, [setPharmacistCellEdits]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(pharmacistFixedLunchPairMigrationKey) === "applied") return;
+    if (appStorage.getItem(pharmacistFixedLunchPairMigrationKey) === "applied") return;
 
     const resetKeys = new Set(["kim-jihye:lunchLate", "kim-yeonji:lunchLate"]);
     setPharmacistCellEdits((current) =>
       Object.fromEntries(Object.entries(current).filter(([key]) => !resetKeys.has(key)))
     );
-    window.localStorage.setItem(pharmacistFixedLunchPairMigrationKey, "applied");
+    appStorage.setItem(pharmacistFixedLunchPairMigrationKey, "applied");
   }, [setPharmacistCellEdits]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(staffTaskDetailMigrationKey) === "applied") return;
+    if (appStorage.getItem(staffTaskDetailMigrationKey) === "applied") return;
 
     setStaffCellEdits((current) =>
       Object.fromEntries(
@@ -503,16 +503,16 @@ export default function App() {
         })
       )
     );
-    window.localStorage.setItem(staffTaskDetailMigrationKey, "applied");
+    appStorage.setItem(staffTaskDetailMigrationKey, "applied");
   }, [setStaffCellEdits]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(staffHelperDuplicateCleanupMigrationKey) === "applied") return;
+    if (appStorage.getItem(staffHelperDuplicateCleanupMigrationKey) === "applied") return;
 
     setStaffCellEdits((current) =>
       Object.fromEntries(Object.entries(current).filter(([key]) => !/:5:helperName$/.test(key)))
     );
-    window.localStorage.setItem(staffHelperDuplicateCleanupMigrationKey, "applied");
+    appStorage.setItem(staffHelperDuplicateCleanupMigrationKey, "applied");
   }, [setStaffCellEdits]);
 
   const [assignmentNameLists, setAssignmentNameLists] = useLocalStorageState<AssignmentNameLists>(
@@ -553,7 +553,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (window.localStorage.getItem(pharmacistHalfDayGroupMigrationKey) === "applied") return;
+    if (appStorage.getItem(pharmacistHalfDayGroupMigrationKey) === "applied") return;
 
     setAssignmentNameLists((current) => {
       if (Array.isArray(current.allDayFixedPharmacistNames)) return current;
@@ -562,7 +562,7 @@ export default function App() {
       const allDayFixed =
         previousFixed.length === legacyPharmacistFixedWorkGroup.length &&
         previousFixed.every((name, index) => name === legacyPharmacistFixedWorkGroup[index]) &&
-        window.localStorage.getItem(pharmacistFixedWorkGroupMigrationKey) !== "applied"
+        appStorage.getItem(pharmacistFixedWorkGroupMigrationKey) !== "applied"
           ? defaultAllDayFixedPharmacistNames
           : previousFixed;
       const allDayRotating =
@@ -580,11 +580,11 @@ export default function App() {
         afternoonRotatingPharmacistNames: defaultAfternoonRotatingGroupNames
       };
     });
-    window.localStorage.setItem(pharmacistHalfDayGroupMigrationKey, "applied");
+    appStorage.setItem(pharmacistHalfDayGroupMigrationKey, "applied");
   }, [setAssignmentNameLists]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(staffAssignmentAugustRuleMigrationKey) === "applied") return;
+    if (appStorage.getItem(staffAssignmentAugustRuleMigrationKey) === "applied") return;
 
     const usesLegacyTimeOrder =
       assignmentNameLists.staffTimeNames.length === legacyStaffTimeNameOrder.length &&
@@ -601,11 +601,11 @@ export default function App() {
       }));
     }
 
-    window.localStorage.setItem(staffAssignmentAugustRuleMigrationKey, "applied");
+    appStorage.setItem(staffAssignmentAugustRuleMigrationKey, "applied");
   }, [assignmentNameLists.staffEarlyNames, assignmentNameLists.staffTimeNames, setAssignmentNameLists]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(staffEarlyAssignmentOrderMigrationKey) === "applied") return;
+    if (appStorage.getItem(staffEarlyAssignmentOrderMigrationKey) === "applied") return;
 
     const usesLegacyEarlyAssignmentOrder =
       assignmentNameLists.staffEarlyNames.length === legacyStaffEarlyAssignmentOrder.length &&
@@ -618,11 +618,11 @@ export default function App() {
       }));
     }
 
-    window.localStorage.setItem(staffEarlyAssignmentOrderMigrationKey, "applied");
+    appStorage.setItem(staffEarlyAssignmentOrderMigrationKey, "applied");
   }, [assignmentNameLists.staffEarlyNames, setAssignmentNameLists]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(staffTimeAssignmentOrderMigrationKey) === "applied") return;
+    if (appStorage.getItem(staffTimeAssignmentOrderMigrationKey) === "applied") return;
 
     const usesLegacyTimeAssignmentOrder =
       assignmentNameLists.staffTimeNames.length === legacyStaffTimeNameOrder.length &&
@@ -635,7 +635,7 @@ export default function App() {
       }));
     }
 
-    window.localStorage.setItem(staffTimeAssignmentOrderMigrationKey, "applied");
+    appStorage.setItem(staffTimeAssignmentOrderMigrationKey, "applied");
   }, [assignmentNameLists.staffTimeNames, setAssignmentNameLists]);
 
   const octoberPharmacistAssignmentOptions = {
@@ -655,14 +655,14 @@ export default function App() {
       Array.isArray(assignmentNameLists.allDayRotatingPharmacistNames);
     if (!groupsReady) return;
     if (
-      window.localStorage.getItem(pharmacistOctoberRotationBaselineMigrationKey) === "applied" &&
+      appStorage.getItem(pharmacistOctoberRotationBaselineMigrationKey) === "applied" &&
       Object.keys(pharmacistOctoberRotationBaseline).length > 0
     ) return;
 
     const octoberAssignment = buildPharmacistAssignment(2026, 10, octoberPharmacistAssignmentOptions);
     const baseline = capturePharmacistAssignmentSnapshot(2026, 10, octoberAssignment, pharmacistCellEdits);
     setPharmacistOctoberRotationBaseline(baseline);
-    window.localStorage.setItem(pharmacistOctoberRotationBaselineMigrationKey, "applied");
+    appStorage.setItem(pharmacistOctoberRotationBaselineMigrationKey, "applied");
   }, [
     anticancerSubPeriods,
     assignmentNameLists.allDayFixedPharmacistNames,
@@ -843,6 +843,12 @@ export default function App() {
       </aside>
 
       <main className="workspace">
+        {isViewerMode && (
+          <div className="viewer-notice no-print" role="status">
+            <strong>학술제 제출용 · 열람 전용</strong>
+            <span>탭과 월을 이동하여 자동 배정 및 문서 내용을 확인하고 출력할 수 있습니다. 내용 수정과 저장은 제한됩니다.</span>
+          </div>
+        )}
         <header className="topbar no-print">
           <div className="month-control">
             <button type="button" onClick={() => moveMonth(-1)} aria-label="이전 달">
@@ -1086,7 +1092,7 @@ function ScheduleTab({
           <p className="schedule-description no-print">나이트 약사, 나이트 직원, 주말/공휴일 근무와 지정 일정을 주 단위로 표시합니다.</p>
           <label className="schedule-subtitle-editor no-print">
             <span>근무표 부제</span>
-            <input
+            <input readOnly={isViewerMode}
               type="text"
               value={scheduleSubtitle}
               onChange={(event) => setScheduleSubtitle(event.currentTarget.value)}
@@ -1153,7 +1159,7 @@ function ScheduleTab({
                         >
                           {editable ? (
                             <>
-                              <input
+                              <input readOnly={isViewerMode}
                                 className="schedule-cell-input no-print"
                                 value={value}
                                 onChange={(event) =>
@@ -1192,7 +1198,7 @@ function ScheduleTab({
         {Object.entries(eventLabels).map(([key, label]) => (
           <label key={key}>
             <span>{label}</span>
-            <input
+            <input readOnly={isViewerMode}
               type="date"
               value={eventDates[key as EventDateKey] ?? ""}
               onChange={(event) =>
@@ -1203,7 +1209,7 @@ function ScheduleTab({
         ))}
         <label>
           <span>나이트 턴 변경일(해당 월·6주 주기)</span>
-          <input
+          <input readOnly={isViewerMode}
             type="date"
             value={currentMonthTurnDate}
             onChange={(event) => changeCurrentMonthTurnDate(event.currentTarget.value)}
@@ -1377,7 +1383,7 @@ function AssignmentTab({
         >
           {cell.editable ? (
             column.key === "name" ? (
-              <input
+              <input readOnly={isViewerMode}
                 className="cell-input"
                 value={value}
                 onChange={(event) =>
@@ -1385,7 +1391,7 @@ function AssignmentTab({
                 }
               />
             ) : (
-              <textarea
+              <textarea readOnly={isViewerMode}
                 className="cell-textarea"
                 value={displayValue}
                 onChange={(event) =>
@@ -1413,7 +1419,7 @@ function AssignmentTab({
           staffAssignmentColumns.map((column) => getStaffEditValue(row, rowIndex, column.key))
         )
       );
-      onStaffExport();
+      if (!isViewerMode) onStaffExport();
       return;
     }
 
@@ -1459,7 +1465,7 @@ function AssignmentTab({
       excelRows,
       true
     );
-    onPharmacistExport();
+    if (!isViewerMode) onPharmacistExport();
   }
 
   return (
@@ -1514,7 +1520,7 @@ function AssignmentTab({
                     return (
                       <td key={`${rowIndex}-${column.key}`} className="editable-cell staff-task-text">
                         {lunchColumn ? value : compact ? (
-                          <input
+                          <input readOnly={isViewerMode}
                             className="cell-input"
                             value={value}
                             onChange={(event) =>
@@ -1525,7 +1531,7 @@ function AssignmentTab({
                             }
                           />
                         ) : (
-                          <textarea
+                          <textarea readOnly={isViewerMode}
                             className="cell-textarea assignment-textarea"
                             value={value}
                             onChange={(event) =>
@@ -1573,10 +1579,11 @@ function AssignmentTab({
           <div className="section-title row-title pharmacist-title-row">
             <h3>{pharmacistAssignment.title}</h3>
             <div className="row-actions no-print">
-              {hasFinalizedPharmacistAssignment && (
+              {(isViewerMode || hasFinalizedPharmacistAssignment) && (
                 <button
                   type="button"
                   className="quiet"
+                  disabled={isViewerMode}
                   onClick={() => {
                     if (window.confirm("이달 약사 업무 분장의 최종본을 해제하고 현재 그룹 규칙으로 다시 계산하시겠습니까? 수기 수정값은 유지됩니다.")) {
                       onPharmacistFinalReset();
@@ -1611,7 +1618,7 @@ function AssignmentTab({
                 <tr key={row.id} className={row.kind === "note" ? "note-row" : ""}>
                   {row.merged ? (
                     <td colSpan={pharmacistAssignment.columns.length} className="editable-cell merged-note-cell">
-                      <input
+                      <input readOnly={isViewerMode}
                         className="cell-input"
                         value={getPharmacistCellValue(row, "name")}
                         onChange={(event) =>
@@ -1685,9 +1692,9 @@ function AssignmentTab({
                   const baseName = name.split("/")[0].trim();
                   return (
                     <label key={name}>
-                      <input
+                      <input readOnly={isViewerMode}
                         type="checkbox"
-                        checked={anticancerSubNames.includes(baseName)}
+                        disabled={isViewerMode} checked={anticancerSubNames.includes(baseName)}
                         onChange={(event) =>
                           onAnticancerSubToggle(baseName, event.currentTarget.checked)
                         }
@@ -1745,8 +1752,8 @@ function EquipmentDocumentTable({
             className={interactive && equipmentItem.assetNo === selectedEquipmentAssetNo ? "selected-equipment-row" : ""}
             key={equipmentItem.assetNo}
           >
-            <td>{interactive ? <input className="cell-input compact-input" defaultValue={equipmentItem.assetNo} /> : equipmentItem.assetNo}</td>
-            <td>{interactive ? <input className="cell-input compact-input" defaultValue={equipmentItem.name} /> : equipmentItem.name}</td>
+            <td>{interactive ? <input readOnly={isViewerMode} className="cell-input compact-input" defaultValue={equipmentItem.assetNo} /> : equipmentItem.assetNo}</td>
+            <td>{interactive ? <input readOnly={isViewerMode} className="cell-input compact-input" defaultValue={equipmentItem.name} /> : equipmentItem.name}</td>
             {days.map((day) => <td className={`empty-write-cell ${day.offDay ? "date-highlight" : ""}`} key={day.dateKey}></td>)}
           </tr>
         ))}
@@ -1806,6 +1813,7 @@ function DocumentsTab({
   }
 
   function saveDocumentColumns() {
+    if (isViewerMode) return;
     setSavedDocumentColumns((current) => ({ ...current, [selectedItem.id]: draftColumns }));
   }
 
@@ -1859,12 +1867,12 @@ function DocumentsTab({
           {draftColumns.map((field, index) => (
             <label key={`${selectedItem.id}-${index}`}>
               <span>{field}</span>
-              <input value={field} onChange={(event) => setDraftColumns((columns) => columns.map((column, columnIndex) => columnIndex === index ? event.target.value : column))} />
+              <input readOnly={isViewerMode} value={field} onChange={(event) => setDraftColumns((columns) => columns.map((column, columnIndex) => columnIndex === index ? event.target.value : column))} />
             </label>
           ))}
         </div>
         <div className="document-print-actions no-print">
-          <button type="button" onClick={saveDocumentColumns}>수정 저장</button>
+          <button type="button" disabled={isViewerMode} onClick={saveDocumentColumns}>수정 저장</button>
           {savedDocumentColumns[selectedItem.id] && <span>최종본 저장됨</span>}
         </div>
         {selectedItem.notes?.map((note) => (
@@ -2288,7 +2296,9 @@ function TextListEditor({
   return (
     <label className="text-list-editor">
       <span>{title}</span>
-      <textarea value={value} onChange={(event) => onChange(event.currentTarget.value)} />
+      <textarea readOnly={isViewerMode} value={value} onChange={(event) => onChange(event.currentTarget.value)} />
     </label>
   );
 }
+
+
