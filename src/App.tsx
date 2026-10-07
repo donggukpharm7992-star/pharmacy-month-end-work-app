@@ -352,13 +352,25 @@ function downloadExcelFile(
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<MainTab>("schedule");
-  const [selectedDate, setSelectedDate] = useState(new Date(2026, 8, 1));
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const stored = appStorage.getItem("pharmacy-app-selected-month");
+    if (stored && /^\d{4}-(0[1-9]|1[0-2])$/.test(stored)) {
+      const [year, month] = stored.split("-").map(Number);
+      return new Date(year, month - 1, 1);
+    }
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
   const [printOrientation, setPrintOrientation] = useState<PrintOrientation>("landscape");
   const [printCalendar, setPrintCalendar] = useState(false);
   const [printAllDocumentsMode, setPrintAllDocumentsMode] = useState<DocumentPrintMode | null>(null);
   const [printAllChecklists, setPrintAllChecklists] = useState(false);
   const year = selectedDate.getFullYear();
   const month = selectedDate.getMonth() + 1;
+
+  useEffect(() => {
+    appStorage.setItem("pharmacy-app-selected-month", `${year}-${String(month).padStart(2, "0")}`);
+  }, [year, month]);
 
   const [lists, setLists] = useLocalStorageState<EditableLists>("pharmacy-app-lists", {
     nightPharmacists: defaultNightPharmacists,
