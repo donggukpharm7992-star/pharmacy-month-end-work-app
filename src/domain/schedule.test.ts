@@ -383,4 +383,15 @@ describe("schedule rules", () => {
     expect(scheduleNameDensityClass("윤주원/이상훈")).toBe("two-names");
     expect(scheduleNameDensityClass("")).toBe("");
   });
+
+  it("folds the final print week into empty first-week weekdays without losing days", () => {
+    const schedule = buildMonthSchedule(2026, 11);
+    expect(buildScheduleWeeks(schedule)).toHaveLength(6);
+    const weeks = buildScheduleWeeks(schedule, true);
+    expect(weeks).toHaveLength(5);
+    expect(weeks[0].days.map((day) => day?.day ?? null)).toEqual([30, null, null, null, null, null, 1]);
+    expect(weeks.flatMap((week) => week.days.filter((day) => day !== null)).map((day) => day.dateKey).sort())
+      .toEqual(schedule.days.map((day) => day.dateKey).sort());
+    expect(buildScheduleWeeks(buildMonthSchedule(2026, 9), true)).toHaveLength(5);
+  });
 });

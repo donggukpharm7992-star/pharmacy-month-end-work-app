@@ -363,6 +363,7 @@ export default function App() {
   });
   const [printOrientation, setPrintOrientation] = useState<PrintOrientation>("landscape");
   const [printCalendar, setPrintCalendar] = useState(false);
+  const [printSchedule, setPrintSchedule] = useState(false);
   const [printAllDocumentsMode, setPrintAllDocumentsMode] = useState<DocumentPrintMode | null>(null);
   const [printAllChecklists, setPrintAllChecklists] = useState(false);
   const year = selectedDate.getFullYear();
@@ -801,6 +802,7 @@ export default function App() {
   }
 
   function printCurrent(orientation: PrintOrientation = printOrientation) {
+    setPrintSchedule(true);
     setPrintOrientation(orientation);
     window.setTimeout(() => window.print(), 50);
   }
@@ -825,6 +827,7 @@ export default function App() {
   useEffect(() => {
     const finishPrinting = () => {
       setPrintCalendar(false);
+      setPrintSchedule(false);
       setPrintAllDocumentsMode(null);
       setPrintAllChecklists(false);
     };
@@ -900,6 +903,7 @@ export default function App() {
 
         {activeTab === "schedule" && (
           <ScheduleTab
+            compactForPrint={printSchedule}
             schedule={schedule}
             lists={lists}
             setLists={setLists}
@@ -1037,6 +1041,7 @@ function CalendarGrid({ cells }: { cells: ReturnType<typeof buildMonthDays> }) {
 }
 
 function ScheduleTab({
+  compactForPrint,
   schedule,
   lists,
   setLists,
@@ -1050,6 +1055,7 @@ function ScheduleTab({
   setNightPharmacistTurnDate,
   onPrint
 }: {
+  compactForPrint: boolean;
   schedule: ReturnType<typeof buildMonthSchedule>;
   lists: EditableLists;
   setLists: (value: EditableLists) => void;
@@ -1064,7 +1070,7 @@ function ScheduleTab({
   onPrint: () => void;
 }) {
   const [showLists, setShowLists] = useState(true);
-  const weeks = buildScheduleWeeks(schedule);
+  const weeks = buildScheduleWeeks(schedule, compactForPrint);
   const weekdays = ["월", "화", "수", "목", "금", "토", "일"];
   const rows = [
     { id: "nightPharmacists", label: "17:00-익일08:00", get: (day: (typeof schedule.days)[number]) => day.nightPharmacists.join("/") },

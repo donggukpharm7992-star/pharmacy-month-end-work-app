@@ -798,7 +798,7 @@ export function applyScheduleDutyEditContinuations(
   return { ...schedule, days };
 }
 
-export function buildScheduleWeeks(schedule: MonthSchedule): ScheduleWeek[] {
+export function buildScheduleWeeks(schedule: MonthSchedule, compactForPrint = false): ScheduleWeek[] {
   const firstWeekday = dateKeyToDate(schedule.days[0].dateKey).getDay();
   const mondayBasedOffset = (firstWeekday + 6) % 7;
   const cells: Array<ScheduleDay | null> = [
@@ -810,8 +810,14 @@ export function buildScheduleWeeks(schedule: MonthSchedule): ScheduleWeek[] {
     cells.push(null);
   }
 
-  return Array.from({ length: cells.length / 7 }, (_, index) => ({
+  const weeks = Array.from({ length: cells.length / 7 }, (_, index) => ({
     index,
     days: cells.slice(index * 7, index * 7 + 7)
   }));
+  const lastWeek = weeks[weeks.length - 1];
+  if (compactForPrint && weeks.length > 4 && lastWeek.days.every((day, index) => day === null || weeks[0].days[index] === null)) {
+    weeks[0].days = weeks[0].days.map((day, index) => day ?? lastWeek.days[index]);
+    weeks.pop();
+  }
+  return weeks;
 }
