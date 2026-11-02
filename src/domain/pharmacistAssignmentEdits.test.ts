@@ -4,7 +4,8 @@ import {
   capturePharmacistAssignmentSnapshot,
   latestPharmacistRotationAnchor,
   pharmacistCellValue,
-  pharmacistMonthlyEditKey
+  pharmacistMonthlyEditKey,
+  pharmacistRowCellValue
 } from "./pharmacistAssignmentEdits";
 
 describe("pharmacist assignment monthly edits", () => {
@@ -28,16 +29,34 @@ describe("pharmacist assignment monthly edits", () => {
     expect(pharmacistCellValue(2026, 12, edits, "lee-jieun", "afternoonA", "12월 자동 업무")).toBe("12월 자동 업무");
   });
 
-  it("keeps Ahn Hyejung and Park Hyunyoung at the early lunch slot despite saved edits", () => {
+  it("keeps early lunch fixed while allowing late lunch work to be edited", () => {
     const edits = {
-      [pharmacistMonthlyEditKey(2026, 11, "ahn-hyejung", "lunchLate")]: "식사",
+      [pharmacistMonthlyEditKey(2026, 11, "ahn-hyejung", "lunchLate")]: "수기 오후 업무",
       [pharmacistMonthlyEditKey(2026, 11, "park-hyunyoung", "lunchEarly")]: "다른 내용"
     };
 
     expect(pharmacistCellValue(2026, 11, edits, "ahn-hyejung", "lunchEarly", "")).toBe("식사");
-    expect(pharmacistCellValue(2026, 11, edits, "ahn-hyejung", "lunchLate", "식사")).toBe("");
+    expect(pharmacistCellValue(2026, 11, edits, "ahn-hyejung", "lunchLate", "")).toBe("수기 오후 업무");
     expect(pharmacistCellValue(2026, 11, edits, "park-hyunyoung", "lunchEarly", "")).toBe("식사");
-    expect(pharmacistCellValue(2026, 11, edits, "park-hyunyoung", "lunchLate", "식사")).toBe("");
+    expect(pharmacistCellValue(2026, 11, edits, "park-hyunyoung", "lunchLate", "NST 임상업무")).toBe("NST 임상업무");
+  });
+
+  it("continues afternoon work from 12:30 and retains monthly overrides in the exported snapshot", () => {
+    const assignment = buildPharmacistAssignment(2026, 11);
+    for (const id of ["ahn-hyejung", "park-hyunyoung"]) {
+      const row = assignment.rows.find((candidate) => candidate.id === id)!;
+      const edits = JSON.parse(JSON.stringify({
+        [pharmacistMonthlyEditKey(2026, 11, id, "afternoonA")]: "뒤 시간대 업무"
+      }));
+      expect(pharmacistRowCellValue(2026, 11, {}, row, "lunchLate")).toBe(row.cells.afternoonA.value);
+      expect(pharmacistRowCellValue(2026, 11, edits, row, "lunchLate")).toBe("뒤 시간대 업무");
+      edits[pharmacistMonthlyEditKey(2026, 11, id, "lunchLate")] = "12:30 수기 업무";
+      expect(pharmacistRowCellValue(2026, 11, edits, row, "lunchLate")).toBe("12:30 수기 업무");
+      expect(capturePharmacistAssignmentSnapshot(2026, 11, assignment, edits)[id].lunchLate).toBe("12:30 수기 업무");
+      expect(pharmacistRowCellValue(2026, 12, edits, row, "lunchLate")).toBe(row.cells.afternoonA.value);
+      edits[pharmacistMonthlyEditKey(2026, 11, id, "lunchLate")] = "";
+      expect(pharmacistRowCellValue(2026, 11, edits, row, "lunchLate")).toBe("");
+    }
   });
 
   it("uses a reloaded October edit as November's exact rotating donor and refreshes after an October correction", () => {

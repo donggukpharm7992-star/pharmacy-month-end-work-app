@@ -29,7 +29,6 @@ export function pharmacistCellValue(
   fallback: string
 ) {
   if (hasFixedPharmacistLunch(rowId) && columnKey === "lunchEarly") return "식사";
-  if (hasFixedPharmacistLunch(rowId) && columnKey === "lunchLate") return "";
   const monthlyValue = edits[pharmacistMonthlyEditKey(year, month, rowId, columnKey)];
   if (monthlyValue !== undefined) return monthlyValue;
   const isOctoberOrEarlier = year < 2026 || (year === 2026 && month <= 10);
@@ -37,6 +36,20 @@ export function pharmacistCellValue(
   return isOctoberOrEarlier || retainsLegacyDisplayScope
     ? edits[legacyPharmacistEditKey(rowId, columnKey)] ?? fallback
     : fallback;
+}
+
+export function pharmacistRowCellValue(
+  year: number,
+  month: number,
+  edits: Record<string, string>,
+  row: PharmacistAssignment["rows"][number],
+  columnKey: PharmacistAssignmentColumnKey
+) {
+  let fallback = row.cells[columnKey].value;
+  if (hasFixedPharmacistLunch(row.id) && columnKey === "lunchLate" && !fallback.trim()) {
+    fallback = pharmacistCellValue(year, month, edits, row.id, "afternoonA", row.cells.afternoonA.value);
+  }
+  return pharmacistCellValue(year, month, edits, row.id, columnKey, fallback);
 }
 
 export function capturePharmacistAssignmentSnapshot(
@@ -49,7 +62,7 @@ export function capturePharmacistAssignmentSnapshot(
     result[row.id] = Object.fromEntries(
       pharmacistAssignmentColumns.map((column) => [
         column.key,
-        pharmacistCellValue(year, month, edits, row.id, column.key, row.cells[column.key].value)
+        pharmacistRowCellValue(year, month, edits, row, column.key)
       ])
     );
     return result;

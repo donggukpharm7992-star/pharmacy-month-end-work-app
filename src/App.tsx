@@ -74,10 +74,11 @@ import {
 import {
   capturePharmacistAssignmentSnapshot,
   latestPharmacistRotationAnchor,
-  pharmacistCellValue,
+  pharmacistRowCellValue,
   pharmacistMonthlyEditKey
 } from "./domain/pharmacistAssignmentEdits";
 import { appStorage, isViewerMode, useLocalStorageState } from "./storage";
+import { downloadScheduleExcel, scheduleDutyRows } from "./scheduleExcel";
 
 type MainTab = "schedule" | "assignment" | "documents" | "checklists";
 type PrintOrientation = "portrait" | "landscape";
@@ -1070,16 +1071,11 @@ function ScheduleTab({
   onPrint: () => void;
 }) {
   const [showLists, setShowLists] = useState(true);
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [excelExportError, setExcelExportError] = useState("");
   const weeks = buildScheduleWeeks(schedule, compactForPrint);
   const weekdays = ["월", "화", "수", "목", "금", "토", "일"];
-  const rows = [
-    { id: "nightPharmacists", label: "17:00-익일08:00", get: (day: (typeof schedule.days)[number]) => day.nightPharmacists.join("/") },
-    { id: "nightStaff", label: "20:00-익일07:00", get: (day: (typeof schedule.days)[number]) => day.nightStaff.join("/") },
-    { id: "morningStaff", label: "07:15-11:15", get: (day: (typeof schedule.days)[number]) => day.morningStaff.join("/") },
-    { id: "dayPharmacists", label: "08:00-17:00", get: (day: (typeof schedule.days)[number]) => day.dayPharmacists.join("/") },
-    { id: "upperMorningPharmacists", label: "08:00-12:00 약사", get: (day: (typeof schedule.days)[number]) => day.upperMorningPharmacists.join("/") },
-    { id: "lowerMorningStaff", label: "08:00-12:00 직원", get: (day: (typeof schedule.days)[number]) => day.lowerMorningStaff.join("/") }
-  ];
+  const rows = scheduleDutyRows;
   const currentMonthTurnDate =
     buildNightPharmacistTurnEvents(schedule.year, schedule.month, nightPharmacistTurnDate)[0]?.date ?? "";
 
@@ -1124,8 +1120,22 @@ function ScheduleTab({
           <button type="button" onClick={onPrint}>
             <Printer size={16} /> 근무표 출력
           </button>
+          <button type="button" className="quiet" disabled={exportingExcel} onClick={async () => {
+            setExportingExcel(true);
+            setExcelExportError("");
+            try {
+              await downloadScheduleExcel(schedule, scheduleSubtitle, scheduleCellEdits);
+            } catch {
+              setExcelExportError("엑셀 파일을 저장하지 못했습니다. 다시 시도해 주세요.");
+            } finally {
+              setExportingExcel(false);
+            }
+          }}>
+            <Save size={16} /> {exportingExcel ? "엑셀 생성 중" : "근무표 엑셀 다운로드"}
+          </button>
         </div>
       </div>
+      {excelExportError && <p className="no-print" role="alert">{excelExportError}</p>}
 
       <div className="schedule-weeks">
         {weeks.map((week) => (
@@ -1361,7 +1371,7 @@ function AssignmentTab({
     row: PharmacistAssignment["rows"][number],
     columnKey: PharmacistAssignmentColumnKey
   ) {
-    return pharmacistCellValue(year, month, pharmacistCellEdits, row.id, columnKey, row.cells[columnKey].value);
+    return pharmacistRowCellValue(year, month, pharmacistCellEdits, row, columnKey);
   }
 
   function renderPharmacistCells(row: PharmacistAssignment["rows"][number]) {
@@ -1383,7 +1393,7 @@ function AssignmentTab({
           const nextColumn = pharmacistAssignment.columns[index + colSpan];
           if (nextColumn.key === "duty") break;
           const nextValue = getPharmacistCellValue(row, nextColumn.key);
-          if (!isBlankPharmacistCell(nextValue)) break;
+          if (!isBlankPharmacistCell(nextValue) && !(column.key === "lunchLate" && nextColumn.key === "afternoonA" && nextValue === value)) break;
           colSpan += 1;
         }
       }
@@ -1462,7 +1472,7 @@ function AssignmentTab({
             const nextColumn = pharmacistAssignment.columns[index + colSpan];
             if (nextColumn.key === "duty") break;
             const nextValue = getPharmacistCellValue(row, nextColumn.key);
-            if (!isBlankPharmacistCell(nextValue)) break;
+            if (!isBlankPharmacistCell(nextValue) && !(column.key === "lunchLate" && nextColumn.key === "afternoonA" && nextValue === value)) break;
             colSpan += 1;
           }
         }
