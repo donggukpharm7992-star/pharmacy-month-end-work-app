@@ -1743,6 +1743,10 @@ function AssignmentTab({
 
 function getDocumentColumns(item: MonthEndPrintItem, edits: DocumentColumnEdits) {
   const savedColumns = edits[item.id];
+  const removedColumnIndex = item.legacyRemovedColumnIndex;
+  if (removedColumnIndex !== undefined && savedColumns?.length === item.columns.length + 1) {
+    return savedColumns.filter((_, index) => index !== removedColumnIndex);
+  }
   return savedColumns?.length === item.columns.length ? savedColumns : item.columns;
 }
 

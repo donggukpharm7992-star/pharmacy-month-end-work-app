@@ -30,6 +30,7 @@ export type MonthEndPrintItem = {
   orientation: PrintOrientation;
   notes?: string[];
   equipment?: DocumentEquipment[];
+  legacyRemovedColumnIndex?: number;
 };
 
 export type MonthEndDocumentGroup = {
@@ -213,10 +214,11 @@ for (const item of refrigeratorGroup.printItems.filter((item) => item.id === "re
     "외용제냉동실",
     "불출장",
     "제제실\n(냉장)",
-    "제제실\n(냉동)",
     "적합/부적합",
     "점검자"
   ];
+  // Saved ward labels from the previous layout include the freezer at index 9.
+  item.legacyRemovedColumnIndex = 9;
 }
 
 export const checklistPrintGroups: PrintableGroup[] = [
